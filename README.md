@@ -4,7 +4,7 @@ A comprehensive implementation of mosaic theory for knot and link diagrams in Sa
 
 ## Overview
 
-Mosaic theory represents knots and links using a grid of standardized tiles, each containing specific curve segments that connect at the edges. This implementation provides 11 different tile types (numbered 0-10) that can be combined to form complete knot diagrams.
+Mosaic theory represents knots and links using a grid of standardized tiles, each containing specific curve segments that connect at the edges. This implementation provides 11 different tile types (numbered 0 - 10) that can be combined to form complete knot diagrams.
 
 ### Tile Types
 

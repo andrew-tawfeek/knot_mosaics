@@ -1,6 +1,7 @@
 {
   "image": "mcr.microsoft.com/devcontainers/universal:2",
   "features": {},
+  "postCreateCommand": "conda install -c conda-forge sage -y",
   "customizations": {
     "vscode": {
       "extensions": [

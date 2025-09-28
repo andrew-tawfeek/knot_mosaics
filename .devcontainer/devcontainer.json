@@ -2,6 +2,9 @@
   "image": "sagemath/sagemath:latest",
   "features": {},
   // "postCreateCommand": "conda install -c conda-forge sage -y", // Removed - SageMath already included
+  "hostRequirements": {
+    "storage": "64gb"
+  },
   "customizations": {
     "vscode": {
       "extensions": [

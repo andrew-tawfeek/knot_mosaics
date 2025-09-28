@@ -1,7 +1,7 @@
 {
-  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "image": "sagemath/sagemath:latest",
   "features": {},
-  "postCreateCommand": "conda install -c conda-forge sage -y",
+  // "postCreateCommand": "conda install -c conda-forge sage -y", // Removed - SageMath already included
   "customizations": {
     "vscode": {
       "extensions": [

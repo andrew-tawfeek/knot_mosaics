@@ -1,3 +1,10 @@
+### CodeSpace Launch Instructions
+Upon launching a CodeSpace, after it has finished building, run `sage -n jupyter --no-browser` in a new terminal window.
+
+Then, when working in a Jupyter notebook, select the terminal to be an "Exisiting Jupyter Server" and paste in the 127.0.0.1 link (ending in a token) into the provided text-entry box.
+
+
+
 # Knot Mosaic Theory in SageMath
 
 A comprehensive implementation of mosaic theory for knot and link diagrams in SageMath. This library provides tools for creating, manipulating, and analyzing knot mosaics using a grid-based tile system.

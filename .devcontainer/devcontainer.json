@@ -20,7 +20,10 @@
         "ms-toolsai.jupyter",
         "GitHub.copilot-chat",
         "GitHub.copilot"
-      ]
+      ],
+      "settings": {
+        "remote.autoForwardPorts": false
+      }
     }
   }
 }

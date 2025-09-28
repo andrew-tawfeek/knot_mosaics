@@ -1,6 +1,8 @@
 {
   "image": "sagemath/sagemath:latest",
-  "features": {},
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
   // "postCreateCommand": "conda install -c conda-forge sage -y", // Removed - SageMath already included
   "hostRequirements": {
     "storage": "64gb"

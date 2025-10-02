@@ -1,0 +1,54 @@
+{
+  "name": "Teaching Computers to Knot",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bullseye",
+  
+  "features": {
+    "ghcr.io/devcontainers/features/git-lfs:1": {}
+  },
+  
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers",
+        "ms-toolsai.vscode-jupyter-cell-tags",
+        "ms-toolsai.vscode-jupyter-slideshow"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "jupyter.notebookFileRoot": "${workspaceFolder}",
+        "notebook.formatOnSave.enabled": true,
+        "python.analysis.typeCheckingMode": "basic"
+      }
+    }
+  },
+
+  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt || echo 'No requirements.txt found'",
+  
+  "forwardPorts": [8888, 6006],
+  "portsAttributes": {
+    "8888": {
+      "label": "Jupyter",
+      "onAutoForward": "notify"
+    },
+    "6006": {
+      "label": "TensorBoard",
+      "onAutoForward": "ignore"
+    }
+  },
+
+  "remoteUser": "vscode",
+  
+  "containerEnv": {
+    "PYTHONUNBUFFERED": "1",
+    "HOME": "/home/vscode"
+  },
+  
+  "postStartCommand": "git config --global user.name 'andrew-tawfeek' && git config --global user.email 'andrew-tawfeek@users.noreply.github.com' && git config --global init.defaultBranch main",
+  
+  "updateContentCommand": "pip install --upgrade pip"
+}

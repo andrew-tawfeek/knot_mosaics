@@ -263,17 +263,15 @@ def main(epochs=300,lr=0.001):
         dropout_rate=0.2
     ).to(device)
 
-    print(f"\nModel architecture:")
-    print(model)
+    # The below, if uncommented, prints the model architecture
+    # print(f"\nModel architecture:")
+    # print(model)
 
     # Train model
     print("\nTraining model...")
     train_losses, val_losses, train_accs, val_accs = train_model(
         model, train_loader, val_loader, epochs=epochs, lr=lr
     )
-
-    # Plot training history
-    plot_training_history(train_losses, val_losses, train_accs, val_accs)
 
     # Evaluate on test set
     print("\nEvaluating on test set...")
@@ -289,26 +287,10 @@ def main(epochs=300,lr=0.001):
             test_preds.extend(predictions)
             test_targets.extend(batch_labels.numpy())
 
-    # Print test metrics
-    print("\nTest Results:")
     print(f"Accuracy: {accuracy_score(test_targets, test_preds):.4f}")
-    print("\nClassification Report:")
-    print(classification_report(test_targets, test_preds,
-          target_names=['Class 0', 'Class 1']))
-    print("\nConfusion Matrix:")
-    print(confusion_matrix(test_targets, test_preds))
 
-    # Example prediction on a single matrix
-    print("\n" + "="*50)
-    print("Example Prediction:")
-    # Use the first test matrix as an example
-    example_matrix = X_test[0] if len(X_test) > 0 else matrices[0]
-
-    prediction, confidence = predict_single_matrix(model, example_matrix)
-    print(
-        f"Input matrix ({matrix_rows}x{matrix_cols}):\n{np.array(example_matrix)}")
-    print(f"Predicted class: {prediction}")
-    print(f"Confidence: {confidence:.4f}")
+    # Plot training history
+    plot_training_history(train_losses, val_losses, train_accs, val_accs)
 
     # Save the trained model
     model_save_path = '/workspaces/knot_mosaics/training/matrix_classifier_model.pth'

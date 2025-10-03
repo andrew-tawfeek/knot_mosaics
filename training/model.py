@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import random
 
-from data import data_pairs  # this is the data the model will be trained on
+from training.data import data_pairs  # this is the data the model will be trained on
 
 
 

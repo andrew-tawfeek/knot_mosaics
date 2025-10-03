@@ -1,5 +1,6 @@
 # Add the training directory to Python path so we can import data.py
 import sys
+import os
 sys.path.append('/workspaces/knot_mosaics/training')
 
 """
@@ -23,6 +24,7 @@ import random
 from data import data_pairs
 
 # Set random seeds for reproducibility
+# Keep this so training the model on the same dataset will produce the same outcome
 torch.manual_seed(42)
 np.random.seed(42)
 random.seed(42)
@@ -217,7 +219,7 @@ def predict_single_matrix(model, matrix):
     return prediction, confidence
 
 
-def main():
+def main(epochs=300,lr=0.001):
     """Main training and evaluation pipeline"""
 
     # Load your data from data.py
@@ -267,7 +269,7 @@ def main():
     # Train model
     print("\nTraining model...")
     train_losses, val_losses, train_accs, val_accs = train_model(
-        model, train_loader, val_loader, epochs=300, lr=0.001
+        model, train_loader, val_loader, epochs=epochs, lr=lr
     )
 
     # Plot training history
@@ -309,13 +311,14 @@ def main():
     print(f"Confidence: {confidence:.4f}")
 
     # Save the trained model
-    torch.save(model.state_dict(), 'matrix_classifier_model.pth')
-    print("\nModel saved as 'matrix_classifier_model.pth'")
+    model_save_path = '/workspaces/knot_mosaics/training/matrix_classifier_model.pth'
+    torch.save(model.state_dict(), model_save_path)
+    print(f"\nModel saved as '{model_save_path}'")
 
     return model
 
 
-def load_and_use_model(model_path='matrix_classifier_model.pth'):
+def load_and_use_model(model_path='/workspaces/knot_mosaics/training/matrix_classifier_model.pth'):
     """Load a saved model and use it for prediction"""
 
     # Load data to detect matrix dimensions

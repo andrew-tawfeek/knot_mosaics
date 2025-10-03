@@ -27,7 +27,7 @@
     }
   },
 
-  "postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt || echo 'No requirements.txt found'",
+  "postCreateCommand": "pip install --upgrade pip && pip install -r .devcontainer/ai/requirements.txt || echo 'No requirements.txt found'",
   
   "forwardPorts": [8888, 6006],
   "portsAttributes": {

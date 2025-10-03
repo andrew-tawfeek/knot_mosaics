@@ -1,4 +1,5 @@
 {
+  "name": "sagemath configuration",
   "image": "sagemath/sagemath:latest",
   "features": {
     "ghcr.io/devcontainers/features/git:1": {}

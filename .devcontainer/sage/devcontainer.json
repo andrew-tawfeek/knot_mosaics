@@ -6,7 +6,7 @@
   },
   // "postCreateCommand": "conda install -c conda-forge sage -y", // Removed - SageMath already included
   "hostRequirements": {
-    "storage": "64gb"
+    "storage": "32gb"
   },
   "customizations": {
     "vscode": {

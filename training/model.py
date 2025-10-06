@@ -1,7 +1,7 @@
 # Add the training directory to Python path so we can import data.py
 import sys
 import os
-sys.path.append('/workspaces/knot_mosaics/training')
+sys.path.append(os.path.dirname(__file__))
 
 """
 PyTorch Binary Classification Neural Network for Matrix Input
@@ -22,7 +22,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import random
 
-from training.data import data_pairs  # this is the data the model will be trained on
+from data import data_pairs  # this is the data the model will be trained on
 
 
 
@@ -296,15 +296,18 @@ def main(epochs=300,lr=0.001):
     plot_training_history(train_losses, val_losses, train_accs, val_accs)
 
     # Save the trained model
-    model_save_path = '/workspaces/knot_mosaics/training/matrix_classifier_model.pth'
+    model_save_path = os.path.join(os.path.dirname(__file__), 'matrix_classifier_model.pth')
     torch.save(model.state_dict(), model_save_path)
     print(f"\nModel saved as '{model_save_path}'")
 
     return model
 
 
-def load_and_use_model(model_path='/workspaces/knot_mosaics/training/matrix_classifier_model.pth'):
+def load_and_use_model(model_path=None):
     """Load a saved model and use it for prediction"""
+    
+    if model_path is None:
+        model_path = os.path.join(os.path.dirname(__file__), 'matrix_classifier_model.pth')
 
     # Load data to detect matrix dimensions
     _, _, matrix_rows, matrix_cols = load_your_data()

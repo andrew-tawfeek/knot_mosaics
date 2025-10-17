@@ -23,7 +23,15 @@ class Tile():
                 self.connectionDirections = ['up','down']
         if (N in [7,8,9,10]):
             self.numConnectionPoints = 4
-            self.connectionDirections = ['up','down','left','right']
+            if (N==7):
+                self.connectionDirections = [['down','left'],['up','right']]
+            if (N==8):
+                self.connectionDirections = [['down','right'],['left','up']]
+            if (N==9):
+                self.connectionDirections = [['down','up'],['left','right']]
+            if (N==10):
+                self.connectionDirections = [['left','right'],['down','up']]
+
     def show(self, resolution = 5):
         T_0 = line([(0,0),(1,0)], axes = False, xmin = 0, xmax = 1, ymin = 0, ymax = 1, frame = True, ticks=[[],[]], thickness=0).plot()
         T_1 = arc((0,0), 1, sector=(0,pi/2), axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
@@ -63,7 +71,7 @@ class Tile():
     def isGoing(self, direction):
         # e.g. Tile(6).isGoing('up') returns True but Tile(6).isGoing('left') returns False
         # This is good for checking suitable connectivity later
-        return direction in self.connectionDirections
+        return direction in flatten(self.connectionDirections)
     def zoom(self, onlyUpDown = False):
         # Every tile becomes 3x3 matrix
         # TODO: Later, iterate this with an input "amount"
@@ -94,7 +102,7 @@ class Tile():
             return [[0,6,0],[5,10,5],[0,6,0]]
     def orient(self, direction):
         # Assigns an orientation to a tile
-        assert direction in self.connectionDirections #returns error if orientation not possible
+        assert direction in flatten(self.connectionDirections) #returns error if orientation not possible
         self.orientation = self.orientation + [direction]
 
 class Mosaic():
@@ -115,7 +123,7 @@ class Mosaic():
         # Letting W = Mosaic(M) for a matrix M, doing W.directions(i,j) returns the connection points
         # of the (i,j)th tile, where (0,0) is the tile in the upper-left (matrix notation, indexed at 0)
         M = self.matrixRepresentation
-        directions = Tile(M[i][j]).connectionDirections
+        directions = flatten(Tile(M[i][j]).connectionDirections)
         return directions
     def isSuitablyConnected(self):
         # As above, for W = Mosaic(M), doing W.isSuitablyConnected() returns either True/False based on connectivity
@@ -173,21 +181,29 @@ class Mosaic():
     def numCrossings(self):
         return len(self.findCrossings())
         
-    def shift(self,i,j, dictionary = False):
+    def shift(self,i,j, dictionary = False): #TODO -- adjust with new connectionDirections partition for 4 connectors
         # Setting 'dictionary = True' allows a dictionary return of tile directions
         assert self.isSuitablyConnected() == True # prevents indexing issues
         M = self.matrixRepresentation
-        directions = Tile(M[i][j]).connectionDirections
-        directions_dict = dict()
+        N = Tile(M[i][j])
+        directions = N.connectionDirections #TODO i.e. remove this flatten
         
-        if 'up' in directions:
-            directions_dict['up'] = (i-1,j)
-        if 'down' in directions:
-            directions_dict['down'] = (i+1,j)
-        if 'left' in directions:
-            directions_dict['left'] = (i,j-1)
-        if 'right' in directions:
-            directions_dict['right'] = (i,j+1)
+        def shifter(direction):
+            directions_dict = dict() #definig the dictionary here...
+            if 'up' in directions:
+                directions_dict['up'] = (i-1,j)
+            if 'down' in directions:
+                directions_dict['down'] = (i+1,j)
+            if 'left' in directions:
+                directions_dict['left'] = (i,j-1)
+            if 'right' in directions:
+                directions_dict['right'] = (i,j+1)
+            return directions_dict
+        
+        if N not in [7,8,9,10]:
+            directions_dict = shifter(directions)
+        else: # directions would be a list of lists here, for each strand
+            directions_dict = [shifter(strand_directions) for strand_directions in directions] # FUCKING BULLSHIT
 
         if dictionary == True:
             return directions_dict
@@ -217,13 +233,13 @@ class Mosaic():
         path = [(prev_x, prev_y), (pos_x, pos_y)]
         # Continue walking until reaching another crossing
         while len(Tile(M[pos_x][pos_y]).connectionDirections) == 2: # If it's a two way street, keep going
-            accessible_coords = self.shift(pos_x,pos_y)
+            accessible_coords = self.shift(pos_x,pos_y) #TODO -- to generalize this, need to generalize shift
             accessible_coords.remove((prev_x, prev_y)) # only one possibility after this
             (prev_x, prev_y) = (pos_x, pos_y)
             (pos_x, pos_y) = accessible_coords[0]
             path += [(pos_x, pos_y)]
 
-        if prev_x < pos_x: # i.e. entered from higher tile
+        if prev_x < pos_x: # i.e. entered from higher tile2
             incidence = 'up'
         if prev_x > pos_x:
             incidence = 'down'
@@ -360,7 +376,7 @@ class Mosaic():
             necessary_connections += ['right']
         
         #return necessary_connections
-        tile_set =  [tile_num for tile_num in range(0,11) if set(necessary_connections).issubset(set(Tile(tile_num).connectionDirections))]
+        tile_set =  [tile_num for tile_num in range(0,11) if set(necessary_connections).issubset(set(flatten(Tile(tile_num).connectionDirections)))]
 
         if top_boundary == True:
             tile_set = [tile for tile in tile_set if tile != 3 and tile != 4 and tile != 6 and tile != 7 and tile != 8 and tile != 9 and tile != 10] #removes tiles that go up

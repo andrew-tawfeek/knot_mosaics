@@ -7,10 +7,12 @@ class Tile():
         if (N == 0):
             self.numConnectionPoints = 0
             self.numStrands = 0
+            self.isCrossing = False
             self.connectionDirections = []
         if (N in [1,2,3,4,5,6]):
             self.numConnectionPoints = 2
             self.numStrands = 1
+            self.isCrossing = False
             if (N==1):
                 self.connectionDirections = ['left','down']
             if (N==2):
@@ -28,12 +30,16 @@ class Tile():
             self.numStrands = 2
             if (N==7):
                 self.connectionDirections = [['down','left'],['up','right']]
+                self.isCrossing = False
             if (N==8):
                 self.connectionDirections = [['down','right'],['left','up']]
+                self.isCrossing = False
             if (N==9):
                 self.connectionDirections = [['down','up'],['left','right']]
+                self.isCrossing = True
             if (N==10):
                 self.connectionDirections = [['left','right'],['down','up']]
+                self.isCrossing = True
 
     def show(self, resolution = 5):
         T_0 = line([(0,0),(1,0)], axes = False, xmin = 0, xmax = 1, ymin = 0, ymax = 1, frame = True, ticks=[[],[]], thickness=0).plot()

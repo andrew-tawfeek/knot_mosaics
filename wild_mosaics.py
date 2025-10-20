@@ -6,9 +6,11 @@ class Tile():
         self.orientation = []
         if (N == 0):
             self.numConnectionPoints = 0
+            self.numStrands = 0
             self.connectionDirections = []
         if (N in [1,2,3,4,5,6]):
             self.numConnectionPoints = 2
+            self.numStrands = 1
             if (N==1):
                 self.connectionDirections = ['left','down']
             if (N==2):
@@ -23,6 +25,7 @@ class Tile():
                 self.connectionDirections = ['up','down']
         if (N in [7,8,9,10]):
             self.numConnectionPoints = 4
+            self.numStrands = 2
             if (N==7):
                 self.connectionDirections = [['down','left'],['up','right']]
             if (N==8):

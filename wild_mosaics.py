@@ -40,6 +40,22 @@ class Tile():
             if (N==10):
                 self.connectionDirections = [['left','right'],['down','up']]
                 self.isCrossing = True
+    
+    def exitPath(self, direction):
+        # Given a direction of entry, returns the exit direction
+        assert direction in flatten(self.connectionDirections)
+        if self.numStrands == 1:
+            if direction == self.connectionDirections[0]:
+                return self.connectionDirections[1]
+            else:
+                return self.connectionDirections[0]
+        elif self.numStrands == 2:
+            for strand in self.connectionDirections:
+                if direction in strand:
+                    if strand[0] == direction:
+                        return strand[1]
+                    else:
+                        return strand[0]
 
     def show(self, resolution = 5):
         T_0 = line([(0,0),(1,0)], axes = False, xmin = 0, xmax = 1, ymin = 0, ymax = 1, frame = True, ticks=[[],[]], thickness=0).plot()
@@ -189,7 +205,23 @@ class Mosaic():
         return crossing_coord
     def numCrossings(self):
         return len(self.findCrossings())
-        
+
+    def exitPath(self,i,j,direction):
+        # Given a tile (i,j) and direction of entry, returns the exit direction
+        M = self.matrixRepresentation
+        assert direction in flatten(Tile(M[i][j]).connectionDirections)
+        T = Tile(M[i][j])
+        exit = T.exitPath(direction)
+        if exit == 'up':
+            return (i-1,j)
+        elif exit == 'down':
+            return (i+1,j)
+        elif exit == 'left':
+            return (i,j-1)
+        elif exit == 'right':
+            return (i,j+1)
+
+
     def shift(self,i,j, dictionary = False): #TODO -- adjust with new connectionDirections partition for 4 connectors
         # Setting 'dictionary = True' allows a dictionary return of tile directions
         assert self.isSuitablyConnected() == True # prevents indexing issues

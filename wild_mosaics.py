@@ -213,13 +213,13 @@ class Mosaic():
         T = Tile(M[i][j])
         exit = T.exitPath(direction)
         if exit == 'up':
-            return (i-1,j)
+            return [(i-1,j), 'up']
         elif exit == 'down':
-            return (i+1,j)
+            return [(i+1,j), 'down']
         elif exit == 'left':
-            return (i,j-1)
+            return [(i,j-1), 'left']
         elif exit == 'right':
-            return (i,j+1)
+            return [(i,j+1), 'right']
 
 
     def shift(self,i,j, dictionary = False): #TODO -- adjust with new connectionDirections partition for 4 connectors
@@ -298,11 +298,32 @@ class Mosaic():
     def arcList(self):
         # run walk on each crossing and with condition pathList = True
         # remove duplicates in nice manner
+
+        # USE isCrossing TO HELP WITH THIS
         pass
             
         # TODO: create graph based on crossing! each vertex should have degree 4, i.e. 4-regular!
         # This is a singular knot representation, nearly, but orientations indicate knot
         # Perhaps for  fun output a directed graph of this sort for visualization.
+
+    
+    def strandOf2(self, tile, direction = choice(flatten(Tile(M[tile]).connectionDirections))):
+        # if not given direction, choose random connection direction of tile
+        start_tile = tile
+        start_direction = direction
+
+        path = []
+
+        tile, direction = self.exitPath(start_tile[0],start_tile[1],opposite(start_direction))
+        path += [tile]
+
+        # keeping track of initial direction deals with 2 strand tiles starting-points!
+        while not (tile == start_tile and direction == start_direction):
+            tile, direction = self.exitPath(tile[0],tile[1],opposite(direction))
+            path += [tile]
+
+        return path
+
 
     def strandOf(self, crossing, direction = 'up'):
         # Returns strand of a single provided crossing.

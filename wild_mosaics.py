@@ -306,11 +306,15 @@ class Mosaic():
         # This is a singular knot representation, nearly, but orientations indicate knot
         # Perhaps for  fun output a directed graph of this sort for visualization.
 
-    
-    def strandOf2(self, tile, direction = None):
+    # the direction is how you enter the tile!
+    def strandOf2(self, tile, direction = None, direction_tracking = False, verbose = False):
+        # returns empty list if 0 tile
+        if Tile(self.matrixRepresentation[tile[0]][tile[1]]).tile == 0:
+            return []
+
         if direction == None:
             directions = flatten(Tile(self.matrixRepresentation[tile[0]][tile[1]]).connectionDirections)
-            direction = random.choice(directions)
+            direction = opposite(random.choice(directions))
         # if not given direction, choose random connection direction of tile
         start_tile = tile
         start_direction = direction
@@ -318,14 +322,22 @@ class Mosaic():
         path = []
 
         tile, direction = self.exitPath(start_tile[0],start_tile[1],opposite(start_direction))
-        path += [tile]
+        path += [(tile, direction)]
 
         # keeping track of initial direction deals with 2 strand tiles starting-points!
         while not (tile == start_tile and direction == start_direction):
             tile, direction = self.exitPath(tile[0],tile[1],opposite(direction))
-            path += [tile]
+            path += [(tile, direction)]
 
-        return path
+        if verbose == True:
+            direction_tracking = True
+            for step in path:
+                print(f"Went {step[1]} into tile {step[0]}.")
+
+        if direction_tracking == True:
+            return path
+        else:
+            return [tile for tile, direction in path]
 
 
     def strandOf(self, crossing, direction = 'up'):

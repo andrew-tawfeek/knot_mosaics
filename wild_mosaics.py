@@ -307,7 +307,10 @@ class Mosaic():
         # Perhaps for  fun output a directed graph of this sort for visualization.
 
     
-    def strandOf2(self, tile, direction = choice(flatten(Tile(M[tile]).connectionDirections))):
+    def strandOf2(self, tile, direction = None):
+        if direction == None:
+            directions = flatten(Tile(self.matrixRepresentation[tile[0]][tile[1]]).connectionDirections)
+            direction = random.choice(directions)
         # if not given direction, choose random connection direction of tile
         start_tile = tile
         start_direction = direction

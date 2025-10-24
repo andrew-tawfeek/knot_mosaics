@@ -339,6 +339,27 @@ class Mosaic():
         else:
             return [tile for tile, direction in path]
 
+    def strands(self):
+        # Returns all strands (applies only when multiple connected components).
+        strand_list = []
+
+        M = self.matrixRepresentation
+
+        
+        
+        
+        return strand_list
+
+
+    def numComponents(self):
+        assert self.isSuitablyConnected() == True #knot has to be connected up
+        # TODO: it does a full walk, checks off each crossing that appears, and etc.
+        # This is not sufficient -- e.g. things that don't have crossings
+
+
+
+        pass
+
 # OLD STRANDOF BELOW, can likely remove helper functions later
 
     # def strandOf(self, crossing, direction = 'up'):
@@ -366,25 +387,7 @@ class Mosaic():
         # Returns the tile above/below (as a pair) each crossing in the mosaic
         return [(self.shift(crossing[0],crossing[1],True)['up'], self.shift(crossing[0],crossing[1],True)['right']) for crossing in self.findCrossings()] 
     
-    def strands(self):
-        # Returns all strands (applies only when multiple connected components).
-        crossings = self.findCrossings() #every crossing should visited twice...
-        
-        
-        pass #TOOD.
-        
-        # check missed crossings after... for x in all_crossings, if x not in strand_list... add to list corresp. to new knot
-        # WARNING: does this tell you when two knots are linked? what does this do for hopf?
-        # Perhaps could be used primarily for orienting, i.e. Sage Links compatibility
 
-    def numComponents(self):
-        assert self.isSuitablyConnected() == True #knot has to be connected up
-        # TODO: it does a full walk, checks off each crossing that appears, and etc.
-        # This is not sufficient -- e.g. things that don't have crossings
-
-
-
-        pass
 
     def planarDiagramCode(self):
         #TODO: This output is what's needed for compatibility with Links package in Sage

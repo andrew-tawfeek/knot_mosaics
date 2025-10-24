@@ -338,6 +338,15 @@ class Mosaic():
             return path
         else:
             return [tile for tile, direction in path]
+        
+    def strandMatrix(self):
+        mosaic_matrix = self.matrixRepresentation
+        dim = self.size
+        M = matrix(dim, dim, 0)
+        for i in range(dim):
+            for j in range(dim):
+                M[i,j] = Tile(mosaic_matrix[i,j]).numStrands
+        return M
 
     def strands(self):
         # Returns all strands (applies only when multiple connected components).

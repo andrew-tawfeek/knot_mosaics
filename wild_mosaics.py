@@ -307,7 +307,7 @@ class Mosaic():
         # Perhaps for  fun output a directed graph of this sort for visualization.
 
     # the direction is how you enter the tile!
-    def strandOf2(self, tile, direction = None, direction_tracking = False, verbose = False):
+    def strandOf(self, tile, direction = None, direction_tracking = False, verbose = False):
         # returns empty list if 0 tile
         if Tile(self.matrixRepresentation[tile[0]][tile[1]]).tile == 0:
             return []
@@ -339,27 +339,28 @@ class Mosaic():
         else:
             return [tile for tile, direction in path]
 
+# OLD STRANDOF BELOW, can likely remove helper functions later
 
-    def strandOf(self, crossing, direction = 'up'):
-        # Returns strand of a single provided crossing.
-        # Orientation at crossign defaults to 'up' unless otherwise indicated.
-        crossings = self.findCrossings()
-        assert crossing in crossings
+    # def strandOf(self, crossing, direction = 'up'):
+    #     # Returns strand of a single provided crossing.
+    #     # Orientation at crossign defaults to 'up' unless otherwise indicated.
+    #     crossings = self.findCrossings()
+    #     assert crossing in crossings
         
-        initial = crossing
-        initial_direction = direction
-        strandPath = self.walk(initial, direction, pathList = True)
-        position, direction = self.walk(initial, direction, tangent = True)
+    #     initial = crossing
+    #     initial_direction = direction
+    #     strandPath = self.walk(initial, direction, pathList = True)
+    #     position, direction = self.walk(initial, direction, tangent = True)
 
-        while position != initial: 
-            strandPath += self.walk(position, direction, pathList = True)[1:] # Drops off repeated start (time = 0)
-            position, direction = self.walk(position, direction, tangent = True)
-            if position == initial:  # This prevent stopping the while loop if initial crossing approached orthogonally
-                if strandPath[-2] != self.shift(initial[0],initial[1],dictionary = True)[opposite(initial_direction)]:
-                    strandPath += self.walk(position, direction, pathList = True)[1:]
-                    position, direction = self.walk(position, direction, tangent = True)
-                else:
-                    return strandPath[:-1] # Used to remove duplicate starting/ending position
+    #     while position != initial: 
+    #         strandPath += self.walk(position, direction, pathList = True)[1:] # Drops off repeated start (time = 0)
+    #         position, direction = self.walk(position, direction, tangent = True)
+    #         if position == initial:  # This prevent stopping the while loop if initial crossing approached orthogonally
+    #             if strandPath[-2] != self.shift(initial[0],initial[1],dictionary = True)[opposite(initial_direction)]:
+    #                 strandPath += self.walk(position, direction, pathList = True)[1:]
+    #                 position, direction = self.walk(position, direction, tangent = True)
+    #             else:
+    #                 return strandPath[:-1] # Used to remove duplicate starting/ending position
 
     def localFrames(self):
         # Returns the tile above/below (as a pair) each crossing in the mosaic

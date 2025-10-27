@@ -306,7 +306,7 @@ class Mosaic():
         # This is a singular knot representation, nearly, but orientations indicate knot
         # Perhaps for  fun output a directed graph of this sort for visualization.
 
-    # the direction is how you enter the tile!
+    # the direction is how you enter the tile! TODO: Change this so it's instead how you exit the tile?
     def strandOf(self, tile, direction = None, direction_tracking = False, verbose = False):
         # returns empty list if 0 tile
         if Tile(self.matrixRepresentation[tile[0]][tile[1]]).tile == 0:
@@ -353,21 +353,29 @@ class Mosaic():
         strand_list = []
 
         M = self.matrixRepresentation
+        nonempty_tiles = M.nonzero_positions()
+        nonvisited_strandMatrix = self.strandMatrix()
 
+        for tile in nonempty_tiles:
+            if nonvisited_strandMatrix[tile[0],tile[1]] > 0:
+                strand = self.strandOf(tile)
+                strand_list += [strand]
+                for strand_tile in strand:
+                    nonvisited_strandMatrix[strand_tile[0],strand_tile[1]] -= 1
         
-        
+        for strand in strand_list: # removes potential duplicates, algorithm needs improvement (tomorrow problem)
+            for other_strand in strand_list:
+                if strand != other_strand and len(strand) == len(other_strand):
+                    if sorted(strand) == sorted(other_strand):
+                        strand_list.remove(other_strand)
         
         return strand_list
 
 
     def numComponents(self):
-        assert self.isSuitablyConnected() == True #knot has to be connected up
-        # TODO: it does a full walk, checks off each crossing that appears, and etc.
-        # This is not sufficient -- e.g. things that don't have crossings
+        assert self.isSuitablyConnected() == True 
 
-
-
-        pass
+        return len(self.strands())
 
 # OLD STRANDOF BELOW, can likely remove helper functions later
 
@@ -490,7 +498,7 @@ class Mosaic():
 
 import random
 
-def random_mosaic(dimension, suitably_connected = True, num_crossings = -1):
+def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_components = -1):
     if num_crossings != -1:
         M = random_mosaic(dimension, suitably_connected = suitably_connected)
         while len(M.findCrossings()) != num_crossings:
@@ -514,21 +522,12 @@ def random_mosaic(dimension, suitably_connected = True, num_crossings = -1):
 
 
 
-    # This code is embarassing, but if it's stupid and it works it's not stupid.
-    # Good luck ever getting this to work for high dimension! Technically, you need luck. Like, a lot of it.
-#    connect_check = False
-#    while connect_check == False:
-#        M = Mosaic(random_matrix(GF(11),dimension,dimension))
-#        connect_check = M.isSuitablyConnected()
-#    return M
 
 
 
 
 
-
-
-
+# This just made life easier.
 def opposite(direction):
     assert direction in ['up','down','left','right']
     if direction == 'up':

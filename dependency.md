@@ -1,5 +1,8 @@
 # Function Dependency Tree for `wild_mosaics.py`
 
+**LAST UPDATED OCTOBER 30TH, 2025**
+
+
 This document illustrates the complete dependency tree of all functions and methods within `wild_mosaics.py`, showing which functions call which other functions.
 
 ---

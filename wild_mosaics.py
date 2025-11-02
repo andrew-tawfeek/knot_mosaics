@@ -498,30 +498,29 @@ class Mosaic():
 
 import random
 
-# TODO: Allow any subset of the properties
-def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_components = -1):
-    if num_crossings != -1:
-        M = random_mosaic(dimension, suitably_connected = suitably_connected)
-        while len(M.findCrossings()) != num_crossings:
-            M = random_mosaic(dimension, suitably_connected = suitably_connected)
-
-    if suitably_connected == False: # I have no clue why you would want this, but here you go
-        M = Mosaic(random_matrix(GF(11),dimension,dimension))
-
-    elif suitably_connected == True:
-        template = matrix(ZZ,dimension,dimension)
+def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_components = -1, _depth = 0):
+    # Prevent infinite recursion
+    if _depth > 1000:
+        raise ValueError("Could not generate mosaic satisfying constraints after 1000 attempts")
+    
+    # Generate base mosaic
+    if suitably_connected:
+        template = matrix(ZZ, dimension, dimension)
         for i in range(dimension):
             for j in range(dimension):
                 template[i,j] = choice(Mosaic(template).potential_tiles(i,j))
         M = Mosaic(template)
+    else:
+        M = Mosaic(random_matrix(GF(11), dimension, dimension))
     
-    if num_components != -1:
-        while M.numComponents() != num_components:
-            M = random_mosaic(dimension, suitably_connected = suitably_connected)
-    
-    return M
+    # Check constraints
+    crossing_validity = (num_crossings == -1) or (M.numCrossings() == num_crossings)
+    component_validity = (num_components == -1) or (M.numComponents() == num_components)
 
-
+    if crossing_validity and component_validity:
+        return M
+    else:
+        return random_mosaic(dimension, suitably_connected, num_crossings, num_components, _depth + 1)
 
 
 

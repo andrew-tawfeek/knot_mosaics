@@ -499,10 +499,10 @@ class Mosaic():
 import random
 
 def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_components = -1, _depth = 0):
-    # Prevent infinite recursion
-    if _depth > 1000:
-        raise ValueError("Could not generate mosaic satisfying constraints after 1000 attempts")
-    
+    # Prevents infinite recursion
+    if _depth > 5000:
+        raise ValueError("Could not generate mosaic satisfying constraints after 5000 attempts")
+
     # Generate base mosaic
     if suitably_connected:
         template = matrix(ZZ, dimension, dimension)
@@ -513,7 +513,7 @@ def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_
     else:
         M = Mosaic(random_matrix(GF(11), dimension, dimension))
     
-    # Check constraints
+    # Check constraints (if given)
     crossing_validity = (num_crossings == -1) or (M.numCrossings() == num_crossings)
     component_validity = (num_components == -1) or (M.numComponents() == num_components)
 

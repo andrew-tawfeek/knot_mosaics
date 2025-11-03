@@ -348,6 +348,17 @@ class Mosaic():
                 M[i,j] = Tile(mosaic_matrix[i,j]).numStrands
         return M
 
+    def strandOrientationAt(self, tile, previous_tile):
+        # returns the induced orientation on a tile based on entering it from previous_tile
+        if previous_tile[0] < tile[0]:
+            return 'down'
+        elif previous_tile[0] > tile[0]:
+            return 'up'
+        elif previous_tile[1] < tile[1]:
+            return 'right'
+        elif previous_tile[1] > tile[1]:
+            return 'left'
+
     def strands(self):
         # Returns all strands (applies only when multiple connected components).
         strand_list = []

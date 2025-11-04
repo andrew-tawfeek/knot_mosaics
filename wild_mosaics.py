@@ -671,6 +671,9 @@ def tangleJoin(tangle_list):
 
 
 def orientedGaussCode(M):
+    if M.numCrossings() == 0:
+        return [[],[]] # empty Gauss code for unknot
+
     # internal function
     def pick_starting_tile(M): #ensures starting tile is not crossing/hyperbolic tile
         strand_matrix = M.strandMatrix()

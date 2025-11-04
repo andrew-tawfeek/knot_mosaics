@@ -506,6 +506,10 @@ class Mosaic():
             tile_set = [0]
 
         return tile_set
+    
+    def toLink(self):
+        return Link(orientedGaussCode(self))
+
 
 import random
 
@@ -762,8 +766,6 @@ def orientedGaussCode(M):
     res = [[res[1]],res[0]] # double-list the first list to match Link() format
 
     return res
-
-
 
 #Were this to be implemented into a GNN...
 

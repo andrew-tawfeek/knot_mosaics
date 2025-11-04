@@ -306,8 +306,15 @@ class Mosaic():
         # This is a singular knot representation, nearly, but orientations indicate knot
         # Perhaps for  fun output a directed graph of this sort for visualization.
 
-    
-    def strandOf2(self, tile, direction = choice(flatten(Tile(M[tile]).connectionDirections))):
+    # the direction is how you enter the tile! TODO: Change this so it's instead how you exit the tile?
+    def strandOf(self, tile, direction = None, direction_tracking = False, verbose = False):
+        # returns empty list if 0 tile
+        if Tile(self.matrixRepresentation[tile[0]][tile[1]]).tile == 0:
+            return []
+
+        if direction == None:
+            directions = flatten(Tile(self.matrixRepresentation[tile[0]][tile[1]]).connectionDirections)
+            direction = opposite(random.choice(directions))
         # if not given direction, choose random connection direction of tile
         start_tile = tile
         start_direction = direction
@@ -315,60 +322,100 @@ class Mosaic():
         path = []
 
         tile, direction = self.exitPath(start_tile[0],start_tile[1],opposite(start_direction))
-        path += [tile]
+        path += [(tile, direction)]
 
         # keeping track of initial direction deals with 2 strand tiles starting-points!
         while not (tile == start_tile and direction == start_direction):
             tile, direction = self.exitPath(tile[0],tile[1],opposite(direction))
-            path += [tile]
+            path += [(tile, direction)]
 
-        return path
+        if verbose == True:
+            direction_tracking = True
+            for step in path:
+                print(f"Went {step[1]} into tile {step[0]}.")
 
-
-    def strandOf(self, crossing, direction = 'up'):
-        # Returns strand of a single provided crossing.
-        # Orientation at crossign defaults to 'up' unless otherwise indicated.
-        crossings = self.findCrossings()
-        assert crossing in crossings
+        if direction_tracking == True:
+            return path
+        else:
+            return [tile for tile, direction in path]
         
-        initial = crossing
-        initial_direction = direction
-        strandPath = self.walk(initial, direction, pathList = True)
-        position, direction = self.walk(initial, direction, tangent = True)
+    def strandMatrix(self):
+        mosaic_matrix = self.matrixRepresentation
+        dim = self.size
+        M = matrix(dim, dim, 0)
+        for i in range(dim):
+            for j in range(dim):
+                M[i,j] = Tile(mosaic_matrix[i,j]).numStrands
+        return M
 
-        while position != initial: 
-            strandPath += self.walk(position, direction, pathList = True)[1:] # Drops off repeated start (time = 0)
-            position, direction = self.walk(position, direction, tangent = True)
-            if position == initial:  # This prevent stopping the while loop if initial crossing approached orthogonally
-                if strandPath[-2] != self.shift(initial[0],initial[1],dictionary = True)[opposite(initial_direction)]:
-                    strandPath += self.walk(position, direction, pathList = True)[1:]
-                    position, direction = self.walk(position, direction, tangent = True)
-                else:
-                    return strandPath[:-1] # Used to remove duplicate starting/ending position
+    def strandOrientationAt(self, tile, previous_tile):
+        # returns the induced orientation on a tile based on entering it from previous_tile
+        if previous_tile[0] < tile[0]:
+            return 'down'
+        elif previous_tile[0] > tile[0]:
+            return 'up'
+        elif previous_tile[1] < tile[1]:
+            return 'right'
+        elif previous_tile[1] > tile[1]:
+            return 'left'
+
+    def strands(self):
+        # Returns all strands (applies only when multiple connected components).
+        strand_list = []
+
+        M = self.matrixRepresentation
+        nonempty_tiles = M.nonzero_positions()
+        nonvisited_strandMatrix = self.strandMatrix()
+
+        for tile in nonempty_tiles:
+            if nonvisited_strandMatrix[tile[0],tile[1]] > 0:
+                strand = self.strandOf(tile)
+                strand_list += [strand]
+                for strand_tile in strand:
+                    nonvisited_strandMatrix[strand_tile[0],strand_tile[1]] -= 1
+        
+        for strand in strand_list: # removes potential duplicates, algorithm needs improvement (tomorrow problem)
+            for other_strand in strand_list:
+                if strand != other_strand and len(strand) == len(other_strand):
+                    if sorted(strand) == sorted(other_strand):
+                        strand_list.remove(other_strand)
+        
+        return strand_list
+
+
+    def numComponents(self):
+        assert self.isSuitablyConnected() == True 
+
+        return len(self.strands())
+
+# OLD STRANDOF BELOW, can likely remove helper functions later
+
+    # def strandOf(self, crossing, direction = 'up'):
+    #     # Returns strand of a single provided crossing.
+    #     # Orientation at crossign defaults to 'up' unless otherwise indicated.
+    #     crossings = self.findCrossings()
+    #     assert crossing in crossings
+        
+    #     initial = crossing
+    #     initial_direction = direction
+    #     strandPath = self.walk(initial, direction, pathList = True)
+    #     position, direction = self.walk(initial, direction, tangent = True)
+
+    #     while position != initial: 
+    #         strandPath += self.walk(position, direction, pathList = True)[1:] # Drops off repeated start (time = 0)
+    #         position, direction = self.walk(position, direction, tangent = True)
+    #         if position == initial:  # This prevent stopping the while loop if initial crossing approached orthogonally
+    #             if strandPath[-2] != self.shift(initial[0],initial[1],dictionary = True)[opposite(initial_direction)]:
+    #                 strandPath += self.walk(position, direction, pathList = True)[1:]
+    #                 position, direction = self.walk(position, direction, tangent = True)
+    #             else:
+    #                 return strandPath[:-1] # Used to remove duplicate starting/ending position
 
     def localFrames(self):
         # Returns the tile above/below (as a pair) each crossing in the mosaic
         return [(self.shift(crossing[0],crossing[1],True)['up'], self.shift(crossing[0],crossing[1],True)['right']) for crossing in self.findCrossings()] 
     
-    def strands(self):
-        # Returns all strands (applies only when multiple connected components).
-        crossings = self.findCrossings() #every crossing should visited twice...
-        
-        
-        pass #TOOD.
-        
-        # check missed crossings after... for x in all_crossings, if x not in strand_list... add to list corresp. to new knot
-        # WARNING: does this tell you when two knots are linked? what does this do for hopf?
-        # Perhaps could be used primarily for orienting, i.e. Sage Links compatibility
 
-    def numComponents(self):
-        assert self.isSuitablyConnected() == True #knot has to be connected up
-        # TODO: it does a full walk, checks off each crossing that appears, and etc.
-        # This is not sufficient -- e.g. things that don't have crossings
-
-
-
-        pass
 
     def planarDiagramCode(self):
         #TODO: This output is what's needed for compatibility with Links package in Sage
@@ -462,22 +509,29 @@ class Mosaic():
 
 import random
 
-def random_mosaic(dimension, suitably_connected = True, num_crossings = -1):
-    if num_crossings != -1:
-        M = random_mosaic(dimension, suitably_connected = suitably_connected)
-        while len(M.findCrossings()) != num_crossings:
-            M = random_mosaic(dimension, suitably_connected = suitably_connected)
-        return M
+def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_components = -1, _depth = 0):
+    # Prevents infinite recursion
+    if _depth > 5000:
+        raise ValueError("Could not generate mosaic satisfying constraints after 5000 attempts")
 
-    if suitably_connected == False: # I have no clue why you would want this, but here you go
-        return Mosaic(random_matrix(GF(11),dimension,dimension))
-
-    elif suitably_connected == True:
-        template = matrix(ZZ,dimension,dimension)
+    # Generate base mosaic
+    if suitably_connected:
+        template = matrix(ZZ, dimension, dimension)
         for i in range(dimension):
             for j in range(dimension):
                 template[i,j] = choice(Mosaic(template).potential_tiles(i,j))
-        return Mosaic(template)
+        M = Mosaic(template)
+    else:
+        M = Mosaic(random_matrix(GF(11), dimension, dimension))
+    
+    # Check constraints (if given)
+    crossing_validity = (num_crossings == -1) or (M.numCrossings() == num_crossings)
+    component_validity = (num_components == -1) or (M.numComponents() == num_components)
+
+    if crossing_validity and component_validity:
+        return M
+    else:
+        return random_mosaic(dimension, suitably_connected, num_crossings, num_components, _depth + 1)
 
 
 
@@ -486,21 +540,8 @@ def random_mosaic(dimension, suitably_connected = True, num_crossings = -1):
 
 
 
-    # This code is embarassing, but if it's stupid and it works it's not stupid.
-    # Good luck ever getting this to work for high dimension! Technically, you need luck. Like, a lot of it.
-#    connect_check = False
-#    while connect_check == False:
-#        M = Mosaic(random_matrix(GF(11),dimension,dimension))
-#        connect_check = M.isSuitablyConnected()
-#    return M
 
-
-
-
-
-
-
-
+# This just made life easier.
 def opposite(direction):
     assert direction in ['up','down','left','right']
     if direction == 'up':
@@ -629,8 +670,95 @@ def tangleJoin(tangle_list):
     return Mosaic(block)
 
 
+def orientedGaussCode(M):
+    # internal function
+    def pick_starting_tile(M): #ensures starting tile is not crossing/hyperbolic tile
+        strand_matrix = M.strandMatrix()
+        for i in range(M.size):
+            for j in range(M.size):
+                if strand_matrix[i,j] == 1:
+                    return (i,j)
+
+    def crossing_handedness(tile_type, orientation_pair):
+        assert tile_type in [9, 10]
+        if tile_type == 9:
+            if sorted(orientation_pair) == ["right", "up"]:
+                return 1
+            if sorted(orientation_pair) == ["down", "left"]:
+                return 1
+            if sorted(orientation_pair) == ["down", "right"]:
+                return -1
+            if sorted(orientation_pair) == ["left", "up"]:
+                return -1
+
+        if tile_type == 10:
+            if sorted(orientation_pair) == ["left", "up"]:
+                return 1
+            if sorted(orientation_pair) == ["down", "right"]:
+                return 1
+            if sorted(orientation_pair) == ["down", "left"]:
+                return -1
+            if sorted(orientation_pair) == ["right", "up"]:
+                return -1
+
+    def over_under(tile_type, orientation, numeric = False):
+        assert tile_type in [9, 10]
+        if tile_type == 9:
+            if orientation in ["up", "down"]: 
+                positioning = "under"
+            if orientation in ["left", "right"]:
+                positioning = "over"
+        if tile_type == 10:
+            if orientation in ["up", "down"]:
+                positioning = "over"
+            if orientation in ["left", "right"]:
+                positioning = "under"
+        if numeric:
+            return 1 if positioning == "over" else -1 # 1 for over, -1 for under
+        return positioning # "over" or "under" if numeric = False
 
 
+    res = []
+
+    path = M.strandOf(pick_starting_tile(M)) 
+    path = list(enumerate(path)) # now path is list of (index, tile)
+
+    crossings = M.findCrossings()
+    appearances = []
+
+    for c in crossings:
+        appearances += [(M.matrixRepresentation[c],c,index, path[index-1][1]) for index, tile in path if tile == c] # (tile, coord, index, previous coord)
+
+    appearances.sort()
+
+    orientations = []
+    for appearance in appearances:
+        tile, coord, index, prev_coord = appearance
+        enterance = M.strandOrientationAt(coord, prev_coord)
+        orientations += [(index,tile, coord, enterance, over_under(tile, enterance, numeric = True))] # (index, tile, coord, strand orientation, over/under)
+
+    crossings = list(dict.fromkeys([crossing for index, tile, crossing, orientation, positioning in orientations])) # ensures crossings in correct order
+
+    crossing_orientations = []
+
+    for c in crossings:
+        tile_type = M.matrixRepresentation[c]
+        orientation_pair = [enterance for index, tile, crossing, enterance, positioning in orientations if crossing == c]
+        crossing_orientations += [crossing_handedness(tile_type, orientation_pair)]
+
+
+    res += [crossing_orientations] # the second list for the oriented Gauss code!!
+
+
+    orientations.sort()
+
+    filter = [(crossings.index(crossing) + 1)*positioning for index, tile, crossing, enterance, positioning in orientations] # can drop index, already ordered in the mode traversed
+
+    res += [filter]
+
+    res = [[res[1]],res[0]] # double-list the first list to match Link() format
+
+    return res
 
 
 

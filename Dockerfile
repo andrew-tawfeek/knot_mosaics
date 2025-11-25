@@ -8,8 +8,6 @@ RUN apt-get update && \
     apt-get install -y \
     sagemath \
     python3-pip \
-    python3-snappy \
-    python3-regina \
     && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

@@ -1,4 +1,6 @@
 # An implementation of mosaic theory into SageMath.
+from sage.all import matrix, flatten, floor, choice, random_matrix, ZZ, GF, oo, pi
+from sage.all import line, arc, graphics_array
 
 class Tile():
     def __init__(self,N):

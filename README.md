@@ -3,6 +3,9 @@ Upon launching a CodeSpace, after it has finished building, run `sage -n jupyter
 
 Then, when working in a Jupyter notebook, select the terminal to be an "Exisiting Jupyter Server" and paste in the 127.0.0.1 link (ending in a token) into the provided text-entry box.
 
+# TODO:
+- Convert over all knots into library of such in package
+- Pull request into SageMath
 
 
 # Knot Mosaic Theory in SageMath

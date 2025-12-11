@@ -6,6 +6,7 @@ Then, when working in a Jupyter notebook, select the terminal to be an "Exisitin
 # TODO:
 - Convert over all knots into library of such in package
 - Pull request into SageMath
+- Write documentation for main python file
 
 
 # Knot Mosaic Theory in SageMath

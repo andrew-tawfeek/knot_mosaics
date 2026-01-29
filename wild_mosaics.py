@@ -1,516 +1,545 @@
 # An implementation of mosaic theory into SageMath.
 
-class Tile():
-    def __init__(self,N):
+import random
+
+# Tile configuration data - defines connection directions for each tile type
+TILE_CONNECTIONS = {
+    0: [],
+    1: ['left', 'down'],
+    2: ['right', 'down'],
+    3: ['up', 'right'],
+    4: ['left', 'up'],
+    5: ['left', 'right'],
+    6: ['up', 'down'],
+    7: [['down', 'left'], ['up', 'right']],
+    8: [['down', 'right'], ['left', 'up']],
+    9: [['down', 'up'], ['left', 'right']],
+    10: [['left', 'right'], ['down', 'up']],
+}
+
+# Tiles that have 4 connection points (2 strands)
+FOUR_POINT_TILES = {7, 8, 9, 10}
+
+# Crossing tiles
+CROSSING_TILES = {9, 10}
+
+# Zoom mappings for each tile type (3x3 matrix representation)
+TILE_ZOOM_MAPS = {
+    0: [[0, 0, 0], [0, 0, 0], [0, 0, 0]],
+    1: [[0, 0, 0], [5, 1, 0], [0, 6, 0]],
+    2: [[0, 0, 0], [0, 2, 5], [0, 6, 0]],
+    3: [[0, 6, 0], [0, 3, 5], [0, 0, 0]],
+    4: [[0, 6, 0], [5, 4, 0], [0, 0, 0]],
+    5: [[0, 0, 0], [5, 5, 5], [0, 0, 0]],
+    6: [[0, 6, 0], [0, 6, 0], [0, 6, 0]],
+    7: [[0, 3, 1], [1, 0, 3], [3, 1, 0]],
+    8: [[2, 4, 0], [4, 0, 2], [0, 2, 4]],
+    9: [[0, 6, 0], [5, 9, 5], [0, 6, 0]],
+    10: [[0, 6, 0], [5, 10, 5], [0, 6, 0]],
+}
+
+# Special zoom for tile 9 with onlyUpDown option
+TILE_9_UP_DOWN_ZOOM = [[2, 8, 1], [7, 10, 7], [3, 8, 4]]
+
+# Tiles that connect in each direction
+TILES_GOING_UP = {3, 4, 6, 7, 8, 9, 10}
+TILES_GOING_DOWN = {1, 2, 6, 7, 8, 9, 10}
+TILES_GOING_LEFT = {1, 4, 5, 7, 8, 9, 10}
+TILES_GOING_RIGHT = {2, 3, 5, 7, 8, 9, 10}
+
+
+def opposite(direction):
+    """Returns the opposite direction."""
+    direction_opposites = {
+        'up': 'down',
+        'down': 'up',
+        'left': 'right',
+        'right': 'left',
+    }
+    assert direction in direction_opposites
+    return direction_opposites[direction]
+
+
+class Tile:
+    def __init__(self, N):
         self.tile = N
         self.orientation = []
-        if (N == 0):
+        connections = TILE_CONNECTIONS.get(N, [])
+
+        if N == 0:
             self.numConnectionPoints = 0
             self.numStrands = 0
             self.isCrossing = False
             self.connectionDirections = []
-        if (N in [1,2,3,4,5,6]):
+        elif N in range(1, 7):
             self.numConnectionPoints = 2
             self.numStrands = 1
             self.isCrossing = False
-            if (N==1):
-                self.connectionDirections = ['left','down']
-            if (N==2):
-                self.connectionDirections = ['right','down']
-            if (N==3):
-                self.connectionDirections = ['up','right']
-            if (N==4):
-                self.connectionDirections = ['left','up']
-            if (N==5):
-                self.connectionDirections = ['left','right']
-            if (N==6):
-                self.connectionDirections = ['up','down']
-        if (N in [7,8,9,10]):
+            self.connectionDirections = connections
+        elif N in FOUR_POINT_TILES:
             self.numConnectionPoints = 4
             self.numStrands = 2
-            if (N==7):
-                self.connectionDirections = [['down','left'],['up','right']]
-                self.isCrossing = False
-            if (N==8):
-                self.connectionDirections = [['down','right'],['left','up']]
-                self.isCrossing = False
-            if (N==9):
-                self.connectionDirections = [['down','up'],['left','right']]
-                self.isCrossing = True
-            if (N==10):
-                self.connectionDirections = [['left','right'],['down','up']]
-                self.isCrossing = True
-    
+            self.isCrossing = N in CROSSING_TILES
+            self.connectionDirections = connections
+
     def exitPath(self, direction):
-        # Given a direction of entry, returns the exit direction
+        """Given a direction of entry, returns the exit direction."""
         assert direction in flatten(self.connectionDirections)
+
         if self.numStrands == 1:
             if direction == self.connectionDirections[0]:
                 return self.connectionDirections[1]
-            else:
-                return self.connectionDirections[0]
+            return self.connectionDirections[0]
         elif self.numStrands == 2:
             for strand in self.connectionDirections:
                 if direction in strand:
-                    if strand[0] == direction:
-                        return strand[1]
-                    else:
-                        return strand[0]
+                    return strand[1] if strand[0] == direction else strand[0]
 
-    def show(self, resolution = 5):
-        T_0 = line([(0,0),(1,0)], axes = False, xmin = 0, xmax = 1, ymin = 0, ymax = 1, frame = True, ticks=[[],[]], thickness=0).plot()
-        T_1 = arc((0,0), 1, sector=(0,pi/2), axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_2 = arc((0,0), 1, sector=(0,pi), axes = False, xmin = -2, xmax = 0, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_3 = arc((0,0), 1, sector=(pi,2*pi), axes = False, xmin = -2, xmax = 0, ymin = -2, ymax = 0, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_4 = arc((0,0), 1, sector=(pi,2*pi), axes = False, xmin = 0, xmax = 2, ymin = -2, ymax = 0, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_5 = line([(0,1), (1,1)], axes = False, xmin = 0, xmax = 1, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_6 = line([(1,0), (1,1)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 1, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_7 = T_1 + arc((2,2), 1, sector=(pi,2*pi), axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_8 = arc((0,2), 1, sector=(2*pi/3,2*pi), axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot() + arc((2,0), 1, sector=(pi,pi/2), axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_9 = line([(0,1), (2,1)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot() + line([(1,0), (1,.6)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot() + line([(1,1.4), (1,2)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
-        T_10 = line([(1,2), (1,0)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot() + line([(0,1), (.6,1)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot() + line([(1.4,1), (2,1)], axes = False, xmin = 0, xmax = 2, ymin = 0, ymax = 2, frame = True, ticks=[[],[]], thickness=resolution).plot()
+    def show(self, resolution=5):
+        """Returns a graphical representation of the tile."""
+        plot_params = {
+            'axes': False,
+            'frame': True,
+            'ticks': [[], []],
+            'thickness': resolution
+        }
 
-        if (self.tile==0):
-            return T_0
-        if (self.tile==1):
-            return T_1
-        if (self.tile==2):
-            return T_2
-        if (self.tile==3):
-            return T_3
-        if (self.tile==4):
-            return T_4
-        if (self.tile==5):
-            return T_5
-        if (self.tile==6):
-            return T_6
-        if (self.tile==7):
-            return T_7
-        if (self.tile==8):
-            return T_8
-        if (self.tile==9):
-            return T_9
-        if (self.tile==10):
-            return T_10
+        T_0 = line([(0, 0), (1, 0)], xmin=0, xmax=1, ymin=0, ymax=1, thickness=0, **{k: v for k, v in plot_params.items() if k != 'thickness'}).plot()
+        T_1 = arc((0, 0), 1, sector=(0, pi/2), xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot()
+        T_2 = arc((0, 0), 1, sector=(0, pi), xmin=-2, xmax=0, ymin=0, ymax=2, **plot_params).plot()
+        T_3 = arc((0, 0), 1, sector=(pi, 2*pi), xmin=-2, xmax=0, ymin=-2, ymax=0, **plot_params).plot()
+        T_4 = arc((0, 0), 1, sector=(pi, 2*pi), xmin=0, xmax=2, ymin=-2, ymax=0, **plot_params).plot()
+        T_5 = line([(0, 1), (1, 1)], xmin=0, xmax=1, ymin=0, ymax=2, **plot_params).plot()
+        T_6 = line([(1, 0), (1, 1)], xmin=0, xmax=2, ymin=0, ymax=1, **plot_params).plot()
+        T_7 = T_1 + arc((2, 2), 1, sector=(pi, 2*pi), xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot()
+        T_8 = (arc((0, 2), 1, sector=(2*pi/3, 2*pi), xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot() +
+               arc((2, 0), 1, sector=(pi, pi/2), xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot())
+        T_9 = (line([(0, 1), (2, 1)], xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot() +
+               line([(1, 0), (1, .6)], xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot() +
+               line([(1, 1.4), (1, 2)], xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot())
+        T_10 = (line([(1, 2), (1, 0)], xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot() +
+                line([(0, 1), (.6, 1)], xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot() +
+                line([(1.4, 1), (2, 1)], xmin=0, xmax=2, ymin=0, ymax=2, **plot_params).plot())
+
+        tile_plots = {
+            0: T_0, 1: T_1, 2: T_2, 3: T_3, 4: T_4, 5: T_5,
+            6: T_6, 7: T_7, 8: T_8, 9: T_9, 10: T_10
+        }
+        return tile_plots.get(self.tile)
 
     def isGoing(self, direction):
-        # e.g. Tile(6).isGoing('up') returns True but Tile(6).isGoing('left') returns False
-        # This is good for checking suitable connectivity later
+        """Check if tile has a connection in the given direction.
+
+        e.g. Tile(6).isGoing('up') returns True but Tile(6).isGoing('left') returns False.
+        This is useful for checking suitable connectivity.
+        """
         return direction in flatten(self.connectionDirections)
-    def zoom(self, onlyUpDown = False):
-        # Every tile becomes 3x3 matrix
-        # TODO: Later, iterate this with an input "amount"
+
+    def zoom(self, onlyUpDown=False):
+        """Returns 3x3 matrix representation of the tile for zooming."""
         N = self.tile
-        if (N==0):
-            return [[0,0,0],[0,0,0],[0,0,0]]
-        if (N==1):
-            return [[0,0,0],[5,1,0],[0,6,0]]
-        if (N==2):
-            return [[0,0,0],[0,2,5],[0,6,0]]
-        if (N==3):
-            return [[0,6,0],[0,3,5],[0,0,0]]
-        if (N==4):
-            return [[0,6,0],[5,4,0],[0,0,0]]
-        if (N==5):
-            return [[0,0,0],[5,5,5],[0,0,0]]
-        if (N==6):
-            return [[0,6,0],[0,6,0],[0,6,0]]
-        if (N==7):
-            return [[0,3,1],[1,0,3],[3,1,0]]
-        if (N==8):
-            return [[2,4,0],[4,0,2],[0,2,4]]
-        if (N==9):
-            if onlyUpDown == True: # twists to center a 10-tile instead
-                return [[2,8,1],[7,10,7],[3,8,4]]
-            return [[0,6,0],[5,9,5],[0,6,0]]
-        if (N==10):
-            return [[0,6,0],[5,10,5],[0,6,0]]
+        if N == 9 and onlyUpDown:
+            # Twists to center a 10-tile instead
+            return TILE_9_UP_DOWN_ZOOM
+        return TILE_ZOOM_MAPS.get(N)
+
     def orient(self, direction):
-        # Assigns an orientation to a tile
-        assert direction in flatten(self.connectionDirections) #returns error if orientation not possible
+        """Assigns an orientation to a tile."""
+        assert direction in flatten(self.connectionDirections)
         self.orientation = self.orientation + [direction]
 
-class Mosaic():
-    def __init__(self,mosaic_matrix): #Takes input matrix or list of lists (array)
+
+class Mosaic:
+    def __init__(self, mosaic_matrix):
+        """Takes input matrix or list of lists (array)."""
         self.matrixRepresentation = matrix(mosaic_matrix)
         self.size = len(self.matrixRepresentation.rows())
-        #attributes/properties of object go here
+
     def __repr__(self):
-        # This representation is announced upon construction. Comment out later, here for testing.
         return f"Mosaic of dimension {self.size}."
-    def show(self, resolution = 5):
-        # Letting W = Mosaic(M) for a matrix M then running W.show() outputs a graphic for the mosaic
-        return graphics_array([[x.show() for x in row] for row in [list(map(Tile,row)) for row in [list(x) for x in self.matrixRepresentation]]]).show(figsize=[resolution, resolution])
-    def matrix(self):
-        # Letting W = Mosaic(M) for a matrix M, and doing W.matrix() returns the matrix representation of the mosaic
-        return self.matrixRepresentation
-    def directions(self,i,j):
-        # Letting W = Mosaic(M) for a matrix M, doing W.directions(i,j) returns the connection points
-        # of the (i,j)th tile, where (0,0) is the tile in the upper-left (matrix notation, indexed at 0)
+
+    def show(self, resolution=5):
+        """Outputs a graphic for the mosaic."""
         M = self.matrixRepresentation
-        directions = flatten(Tile(M[i][j]).connectionDirections)
-        return directions
+        tile_rows = [[Tile(x).show() for x in list(row)] for row in M]
+        return graphics_array(tile_rows).show(figsize=[resolution, resolution])
+
+    def matrix(self):
+        """Returns the matrix representation of the mosaic."""
+        return self.matrixRepresentation
+
+    def directions(self, i, j):
+        """Returns the connection points of the (i,j)th tile.
+
+        Position (0,0) is the tile in the upper-left (matrix notation, indexed at 0).
+        """
+        M = self.matrixRepresentation
+        return flatten(Tile(M[i][j]).connectionDirections)
+
     def isSuitablyConnected(self):
-        # As above, for W = Mosaic(M), doing W.isSuitablyConnected() returns either True/False based on connectivity
+        """Checks if all tile edges connect properly."""
         M = self.matrixRepresentation
         for i in range(self.size):
             for j in range(self.size):
-                if Tile(M[i][j]).isGoing('up'):
-                    if i == 0:
+                tile = Tile(M[i][j])
+
+                if tile.isGoing('up'):
+                    if i == 0 or not Tile(M[i-1][j]).isGoing('down'):
                         return False
-                    elif not Tile(M[i-1][j]).isGoing('down'):
+
+                if tile.isGoing('left'):
+                    if j == 0 or not Tile(M[i][j-1]).isGoing('right'):
                         return False
-                if Tile(M[i][j]).isGoing('left'):
-                    if j == 0:
+
+                if tile.isGoing('right'):
+                    if j == self.size - 1 or not Tile(M[i][j+1]).isGoing('left'):
                         return False
-                    elif not Tile(M[i][j-1]).isGoing('right'):
-                        return False
-                if Tile(M[i][j]).isGoing('right'):
-                    if j == self.size-1:
-                        return False
-                    elif not Tile(M[i][j+1]).isGoing('left'):
-                        return False
-                if Tile(M[i][j]).isGoing('down'):
-                    if i == self.size-1:
-                        return False
-                    elif not Tile(M[i+1][j]).isGoing('up'):
+
+                if tile.isGoing('down'):
+                    if i == self.size - 1 or not Tile(M[i+1][j]).isGoing('up'):
                         return False
         return True
 
-    # If onlyUpDown = True, then all 9 tiles are replaced by twisted 10 tiles (isotopy equivalent)
-    def zoom(self, onlyUpDown = False):
-        # Zooms by 3x, replaces each tile by a 3x3 isotopy equivalent tile
-        # Usage is W.zoom() fro W = Mosaic(M)
+    def zoom(self, onlyUpDown=False):
+        """Zooms by 3x, replaces each tile by a 3x3 isotopy equivalent tile.
+
+        If onlyUpDown=True, all 9 tiles are replaced by twisted 10 tiles (isotopy equivalent).
+        """
         M = self.matrixRepresentation
-        M_tensored = [[Tile(x).zoom(onlyUpDown) for x in row] for row in [list(x) for x in list(M)]]
-        A = [] # The below code unwraps inner 3x3 subtiles
-        for n in range(len(M_tensored)*3):
-            A = A + [[x[n%3] for x in M_tensored[floor(n/3)]]] #Euclidean division, n = floor(n/3)*3 + n%3
-        B = [] # The below code unwraps inner 1x3 subtiles
+        M_tensored = [[Tile(x).zoom(onlyUpDown) for x in list(row)] for row in list(M)]
+
+        # Unwrap inner 3x3 subtiles
+        A = []
+        for n in range(len(M_tensored) * 3):
+            # Euclidean division: n = floor(n/3)*3 + n%3
+            A.append([x[n % 3] for x in M_tensored[floor(n / 3)]])
+
+        # Unwrap inner 1x3 subtiles
+        B = []
         for row in A:
-            tupe = []
-            for tuple in row:
-                tupe = tupe + tuple
-            B = B + [tupe]
+            flat_row = []
+            for subtuple in row:
+                flat_row += subtuple
+            B.append(flat_row)
+
         return Mosaic(B)
+
     def findCrossings(self):
-        # Returns a list of the coordinates (i,j) in the matrix of crossings, i.e. 9/10 tiles
+        """Returns a list of coordinates (i,j) in the matrix of crossings (9/10 tiles)."""
         M = self.matrixRepresentation
         n = self.size
         M_rows = [list(x) for x in M.rows()]
         crossing_coord = []
+
         for i in range(n):
-            row_crossings = [j for j, x in enumerate(M_rows[i]) if x == 9 or x == 10]
-            crossing_coord += [(i,j) for j in row_crossings]
+            row_crossings = [j for j, x in enumerate(M_rows[i]) if x in CROSSING_TILES]
+            crossing_coord += [(i, j) for j in row_crossings]
+
         return crossing_coord
+
     def numCrossings(self):
+        """Returns the number of crossings in the mosaic."""
         return len(self.findCrossings())
 
-    def exitPath(self,i,j,direction):
-        # Given a tile (i,j) and direction of entry, returns the exit direction
+    def exitPath(self, i, j, direction):
+        """Given a tile (i,j) and direction of entry, returns the next tile and exit direction."""
         M = self.matrixRepresentation
         assert direction in flatten(Tile(M[i][j]).connectionDirections)
+
         T = Tile(M[i][j])
-        exit = T.exitPath(direction)
-        if exit == 'up':
-            return [(i-1,j), 'up']
-        elif exit == 'down':
-            return [(i+1,j), 'down']
-        elif exit == 'left':
-            return [(i,j-1), 'left']
-        elif exit == 'right':
-            return [(i,j+1), 'right']
+        exit_dir = T.exitPath(direction)
 
+        next_positions = {
+            'up': ((i - 1, j), 'up'),
+            'down': ((i + 1, j), 'down'),
+            'left': ((i, j - 1), 'left'),
+            'right': ((i, j + 1), 'right'),
+        }
+        return list(next_positions[exit_dir])
 
-    def shift(self,i,j, dictionary = False): #TODO -- adjust with new connectionDirections partition for 4 connectors
-        # Setting 'dictionary = True' allows a dictionary return of tile directions
-        assert self.isSuitablyConnected() == True # prevents indexing issues
+    def shift(self, i, j, dictionary=False):
+        """Returns coordinates of adjacent connected tiles.
+
+        Setting 'dictionary=True' returns a dict mapping directions to tile coordinates.
+        """
+        assert self.isSuitablyConnected()
         M = self.matrixRepresentation
         N = Tile(M[i][j])
-        directions = N.connectionDirections #TODO i.e. remove this flatten
-        
+        directions = N.connectionDirections
+
         def shifter(direction):
-            directions_dict = dict() #definig the dictionary here...
+            directions_dict = {}
             if 'up' in directions:
-                directions_dict['up'] = (i-1,j)
+                directions_dict['up'] = (i - 1, j)
             if 'down' in directions:
-                directions_dict['down'] = (i+1,j)
+                directions_dict['down'] = (i + 1, j)
             if 'left' in directions:
-                directions_dict['left'] = (i,j-1)
+                directions_dict['left'] = (i, j - 1)
             if 'right' in directions:
-                directions_dict['right'] = (i,j+1)
+                directions_dict['right'] = (i, j + 1)
             return directions_dict
-        
-        if N not in [7,8,9,10]:
+
+        if N.tile not in FOUR_POINT_TILES:
             directions_dict = shifter(directions)
-        else: # directions would be a list of lists here, for each strand
-            directions_dict = [shifter(strand_directions) for strand_directions in directions] # FUCKING BULLSHIT
-
-        if dictionary == True:
-            return directions_dict
         else:
-            return list(directions_dict.values())
+            # Directions is a list of lists here, for each strand
+            directions_dict = [shifter(strand_directions) for strand_directions in directions]
 
-    def walk(self, crossing, direction, pathList = False, tangent = False):
-        #assert #NEED TO ENSURE NO HYPERBOLIC TILES
-        # Given a crossing and direction (up/down/left/right), returns crossing reached and orientation demanded
-        # W.walk(W.walk(crossing, direction)[0],W.walk(crossing, direction)[1]) #is actually just the identity, returns crossing, direction, as expected
-        all_crossings = self.findCrossings() # list of crossings (i,j)
-        assert crossing in all_crossings # error prevention
+        if dictionary:
+            return directions_dict
+        return list(directions_dict.values())
+
+    def walk(self, crossing, direction, pathList=False, tangent=False):
+        """Given a crossing and direction, returns crossing reached and orientation demanded.
+
+        W.walk(W.walk(crossing, direction)[0], W.walk(crossing, direction)[1])
+        is actually just the identity, returns (crossing, direction) as expected.
+        """
+        all_crossings = self.findCrossings()
+        assert crossing in all_crossings
+
         M = self.matrixRepresentation
-        (pos_x, pos_y) = crossing # CAREFUL: pos_x, pos_y are row, col -- not Cartesian coords!
+        # CAREFUL: pos_x, pos_y are row, col -- not Cartesian coords!
+        (pos_x, pos_y) = crossing
         (prev_x, prev_y) = crossing
-        # Start at the indicated crossing tile (i,j), goes direction
-        
-        if direction == 'up':
-            pos_x -= 1
-        if direction == 'down':
-            pos_x += 1
-        if direction == 'left':
-            pos_y -= 1
-        if direction == 'right':
-            pos_y += 1
+
+        # Move in the indicated direction
+        direction_deltas = {
+            'up': (-1, 0),
+            'down': (1, 0),
+            'left': (0, -1),
+            'right': (0, 1),
+        }
+        dx, dy = direction_deltas[direction]
+        pos_x += dx
+        pos_y += dy
 
         path = [(prev_x, prev_y), (pos_x, pos_y)]
+
         # Continue walking until reaching another crossing
-        while len(Tile(M[pos_x][pos_y]).connectionDirections) == 2: # If it's a two way street, keep going
-            accessible_coords = self.shift(pos_x,pos_y) #TODO -- to generalize this, need to generalize shift
-            accessible_coords.remove((prev_x, prev_y)) # only one possibility after this
+        while len(Tile(M[pos_x][pos_y]).connectionDirections) == 2:
+            accessible_coords = self.shift(pos_x, pos_y)
+            accessible_coords.remove((prev_x, prev_y))
             (prev_x, prev_y) = (pos_x, pos_y)
             (pos_x, pos_y) = accessible_coords[0]
-            path += [(pos_x, pos_y)]
+            path.append((pos_x, pos_y))
 
-        if prev_x < pos_x: # i.e. entered from higher tile2
+        # Determine incidence direction
+        if prev_x < pos_x:
             incidence = 'up'
-        if prev_x > pos_x:
+        elif prev_x > pos_x:
             incidence = 'down'
-        if prev_y < pos_y:
+        elif prev_y < pos_y:
             incidence = 'left'
-        if prev_y > pos_y:
-            incidence = 'right'
-        
-        if pathList == True:
-            return path
-        elif tangent == True:
-            return (pos_x, pos_y), opposite(incidence)
         else:
-            return (pos_x, pos_y), incidence
+            incidence = 'right'
+
+        if pathList:
+            return path
+        elif tangent:
+            return (pos_x, pos_y), opposite(incidence)
+        return (pos_x, pos_y), incidence
+
     def arcList(self):
-        # run walk on each crossing and with condition pathList = True
-        # remove duplicates in nice manner
-
-        # USE isCrossing TO HELP WITH THIS
+        """Run walk on each crossing and with condition pathList=True, remove duplicates."""
+        # TODO: Create graph based on crossings - each vertex should have degree 4 (4-regular)
+        # This is a singular knot representation; orientations indicate knot
         pass
-            
-        # TODO: create graph based on crossing! each vertex should have degree 4, i.e. 4-regular!
-        # This is a singular knot representation, nearly, but orientations indicate knot
-        # Perhaps for  fun output a directed graph of this sort for visualization.
 
-    # the direction is how you enter the tile! TODO: Change this so it's instead how you exit the tile?
-    def strandOf(self, tile, direction = None, direction_tracking = False, verbose = False):
-        # returns empty list if 0 tile
-        if Tile(self.matrixRepresentation[tile[0]][tile[1]]).tile == 0:
+    def strandOf(self, tile, direction=None, direction_tracking=False, verbose=False):
+        """Traces a complete strand through the mosaic starting from the given tile.
+
+        Returns empty list if tile is empty (0 tile).
+        """
+        tile_type = Tile(self.matrixRepresentation[tile[0]][tile[1]]).tile
+        if tile_type == 0:
             return []
 
-        if direction == None:
+        if direction is None:
             directions = flatten(Tile(self.matrixRepresentation[tile[0]][tile[1]]).connectionDirections)
             direction = opposite(random.choice(directions))
-        # if not given direction, choose random connection direction of tile
+
         start_tile = tile
         start_direction = direction
-
         path = []
 
-        tile, direction = self.exitPath(start_tile[0],start_tile[1],opposite(start_direction))
-        path += [(tile, direction)]
+        tile, direction = self.exitPath(start_tile[0], start_tile[1], opposite(start_direction))
+        path.append((tile, direction))
 
-        # keeping track of initial direction deals with 2 strand tiles starting-points!
+        # Keep track of initial direction to handle 2-strand tile starting points
         while not (tile == start_tile and direction == start_direction):
-            tile, direction = self.exitPath(tile[0],tile[1],opposite(direction))
-            path += [(tile, direction)]
+            tile, direction = self.exitPath(tile[0], tile[1], opposite(direction))
+            path.append((tile, direction))
 
-        if verbose == True:
+        if verbose:
             direction_tracking = True
             for step in path:
                 print(f"Went {step[1]} into tile {step[0]}.")
 
-        if direction_tracking == True:
+        if direction_tracking:
             return path
-        else:
-            return [tile for tile, direction in path]
-        
+        return [tile for tile, direction in path]
+
     def strandMatrix(self):
+        """Returns a matrix showing the number of strands at each position."""
         mosaic_matrix = self.matrixRepresentation
         dim = self.size
         M = matrix(dim, dim, 0)
         for i in range(dim):
             for j in range(dim):
-                M[i,j] = Tile(mosaic_matrix[i,j]).numStrands
+                M[i, j] = Tile(mosaic_matrix[i, j]).numStrands
         return M
 
     def strandOrientationAt(self, tile, previous_tile):
-        # returns the induced orientation on a tile based on entering it from previous_tile
+        """Returns the induced orientation on a tile based on entering from previous_tile."""
         if previous_tile[0] < tile[0]:
             return 'down'
         elif previous_tile[0] > tile[0]:
             return 'up'
         elif previous_tile[1] < tile[1]:
             return 'right'
-        elif previous_tile[1] > tile[1]:
-            return 'left'
+        return 'left'
 
     def strands(self):
-        # Returns all strands (applies only when multiple connected components).
+        """Returns all strands (applies when there are multiple connected components)."""
         strand_list = []
-
         M = self.matrixRepresentation
         nonempty_tiles = M.nonzero_positions()
         nonvisited_strandMatrix = self.strandMatrix()
 
         for tile in nonempty_tiles:
-            if nonvisited_strandMatrix[tile[0],tile[1]] > 0:
+            if nonvisited_strandMatrix[tile[0], tile[1]] > 0:
                 strand = self.strandOf(tile)
-                strand_list += [strand]
+                strand_list.append(strand)
                 for strand_tile in strand:
-                    nonvisited_strandMatrix[strand_tile[0],strand_tile[1]] -= 1
-        
-        for strand in strand_list: # removes potential duplicates, algorithm needs improvement (tomorrow problem)
+                    nonvisited_strandMatrix[strand_tile[0], strand_tile[1]] -= 1
+
+        # Remove potential duplicates
+        for strand in strand_list:
             for other_strand in strand_list:
                 if strand != other_strand and len(strand) == len(other_strand):
                     if sorted(strand) == sorted(other_strand):
                         strand_list.remove(other_strand)
-        
+
         return strand_list
 
-
     def numComponents(self):
-        assert self.isSuitablyConnected() == True 
-
+        """Returns the number of connected components in the mosaic."""
+        assert self.isSuitablyConnected()
         return len(self.strands())
 
-# OLD STRANDOF BELOW, can likely remove helper functions later
-
-    # def strandOf(self, crossing, direction = 'up'):
-    #     # Returns strand of a single provided crossing.
-    #     # Orientation at crossign defaults to 'up' unless otherwise indicated.
-    #     crossings = self.findCrossings()
-    #     assert crossing in crossings
-        
-    #     initial = crossing
-    #     initial_direction = direction
-    #     strandPath = self.walk(initial, direction, pathList = True)
-    #     position, direction = self.walk(initial, direction, tangent = True)
-
-    #     while position != initial: 
-    #         strandPath += self.walk(position, direction, pathList = True)[1:] # Drops off repeated start (time = 0)
-    #         position, direction = self.walk(position, direction, tangent = True)
-    #         if position == initial:  # This prevent stopping the while loop if initial crossing approached orthogonally
-    #             if strandPath[-2] != self.shift(initial[0],initial[1],dictionary = True)[opposite(initial_direction)]:
-    #                 strandPath += self.walk(position, direction, pathList = True)[1:]
-    #                 position, direction = self.walk(position, direction, tangent = True)
-    #             else:
-    #                 return strandPath[:-1] # Used to remove duplicate starting/ending position
-
     def localFrames(self):
-        # Returns the tile above/below (as a pair) each crossing in the mosaic
-        return [(self.shift(crossing[0],crossing[1],True)['up'], self.shift(crossing[0],crossing[1],True)['right']) for crossing in self.findCrossings()] 
-    
-
+        """Returns the tile above/right (as pairs) for each crossing in the mosaic."""
+        crossings = self.findCrossings()
+        frames = []
+        for crossing in crossings:
+            shift_dict = self.shift(crossing[0], crossing[1], True)
+            frames.append((shift_dict['up'], shift_dict['right']))
+        return frames
 
     def planarDiagramCode(self):
-        #TODO: This output is what's needed for compatibility with Links package in Sage
-        # https://doc.sagemath.org/html/en/reference/knots/sage/knots/link.html
+        """Returns output compatible with SageMath Links package.
+
+        TODO: Implement for https://doc.sagemath.org/html/en/reference/knots/sage/knots/link.html
+        """
         pass
 
     def flip(self):
-        # Flips the mosaic upside-down while maintaining tile connections
+        """Flips the mosaic upside-down while maintaining tile connections."""
         M = self.matrixRepresentation
-        flipped_matrix = M[::-1,:] # flips entire matrix upside down
-        for i in range(self.size): # all this fixes the fact that tiles need to be interchanged with their upside-down counterparts
+        flipped_matrix = M[::-1, :]
+
+        # Map tiles to their upside-down counterparts
+        flip_map = {1: 4, 4: 1, 2: 3, 3: 2, 7: 8, 8: 7}
+
+        for i in range(self.size):
             for j in range(self.size):
-                if flipped_matrix[i,j] == 1:
-                    flipped_matrix[i,j] = 4
-                elif flipped_matrix[i,j] == 2:
-                    flipped_matrix[i,j] = 3
-                elif flipped_matrix[i,j] == 3:
-                    flipped_matrix[i,j] = 2
-                elif flipped_matrix[i,j] == 4:
-                    flipped_matrix[i,j] = 1
-                elif flipped_matrix[i,j] == 7:
-                    flipped_matrix[i,j] = 8
-                elif flipped_matrix[i,j] == 8:
-                    flipped_matrix[i,j] = 7
+                tile_val = flipped_matrix[i, j]
+                if tile_val in flip_map:
+                    flipped_matrix[i, j] = flip_map[tile_val]
+
         return Mosaic(flipped_matrix)
 
     def potential_tiles(self, i, j):
-    # outputs a LIST of potential tile insertions based on the up-down/left-right open connections
-    # around the (i,j)th tile
+        """Returns a list of potential tile insertions based on surrounding connections.
 
+        Checks up-down/left-right open connections around the (i,j)th tile.
+        """
         necessary_connections = []
-        
         top_boundary = False
         bottom_boundary = False
         left_boundary = False
         right_boundary = False
-
         boundary_tile = False
 
-        #above
-        if i == 0: # above is boundary
-            top_boundary = True # it isn't allowed to go up in this case
-        elif self.directions(i-1, j) == []: # if the tile above is a blank tile, (i,j) cannot go up
+        # Check above
+        if i == 0:
             top_boundary = True
-        elif 'down' in self.directions(i-1, j): # if the tile above contains a downward connection, (i,j) goes up
-            necessary_connections += ['up']
+        elif self.directions(i - 1, j) == []:
+            top_boundary = True
+        elif 'down' in self.directions(i - 1, j):
+            necessary_connections.append('up')
         else:
             top_boundary = True
 
-        if i == self.size-1: #below is the mosaic boundary
+        # Check below
+        if i == self.size - 1:
             bottom_boundary = True
-        elif 'up' in self.directions(i+1, j): # if the tile below contains an upward connection
-            necessary_connections += ['down']
+        elif 'up' in self.directions(i + 1, j):
+            necessary_connections.append('down')
 
-        if j == 0: # left is boundary
+        # Check left
+        if j == 0:
             left_boundary = True
-        elif 'right' in self.directions(i, j-1):
-            necessary_connections += ['left']
-        elif self.directions(i, j-1) == []: # if the tile to the left is a blank tile, (i,j) cannot go left
+        elif 'right' in self.directions(i, j - 1):
+            necessary_connections.append('left')
+        elif self.directions(i, j - 1) == []:
             left_boundary = True
         else:
             left_boundary = True
 
-        if j == self.size-1: # right is boundary
+        # Check right
+        if j == self.size - 1:
             right_boundary = True
-        elif 'left' in self.directions(i, j+1): 
-            necessary_connections += ['right']
-        
-        #return necessary_connections
-        tile_set =  [tile_num for tile_num in range(0,11) if set(necessary_connections).issubset(set(flatten(Tile(tile_num).connectionDirections)))]
+        elif 'left' in self.directions(i, j + 1):
+            necessary_connections.append('right')
 
-        if top_boundary == True:
-            tile_set = [tile for tile in tile_set if tile != 3 and tile != 4 and tile != 6 and tile != 7 and tile != 8 and tile != 9 and tile != 10] #removes tiles that go up
+        # Find tiles that satisfy necessary connections
+        tile_set = [
+            tile_num for tile_num in range(11)
+            if set(necessary_connections).issubset(set(flatten(Tile(tile_num).connectionDirections)))
+        ]
 
-        if bottom_boundary == True:
-            tile_set = [tile for tile in tile_set if tile != 1 and tile != 2 and tile != 6 and tile != 7 and tile != 8 and tile != 9 and tile != 10]
+        # Remove tiles that would go into boundaries
+        if top_boundary:
+            tile_set = [t for t in tile_set if t not in TILES_GOING_UP]
+        if bottom_boundary:
+            tile_set = [t for t in tile_set if t not in TILES_GOING_DOWN]
+        if left_boundary:
+            tile_set = [t for t in tile_set if t not in TILES_GOING_LEFT]
+        if right_boundary:
+            tile_set = [t for t in tile_set if t not in TILES_GOING_RIGHT]
 
-        if left_boundary == True:
-            tile_set = [tile for tile in tile_set if tile != 1 and tile != 4 and tile != 5 and tile != 7 and tile != 8 and tile != 9 and tile != 10]
-        
-        if right_boundary == True:
-            tile_set = [tile for tile in tile_set if tile != 2 and tile != 3 and tile != 5 and tile != 7 and tile != 8 and tile != 9 and tile != 10]
-        
-        if top_boundary == True or bottom_boundary == True or left_boundary == True or right_boundary == True:
+        if top_boundary or bottom_boundary or left_boundary or right_boundary:
             boundary_tile = True
 
-        if necessary_connections == [] and boundary_tile == False:
+        # If no necessary connections and not on boundary, only allow empty tile
+        if necessary_connections == [] and not boundary_tile:
             tile_set = [0]
 
         return tile_set
 
-import random
 
-def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_components = -1, _depth = 0):
-    # Prevents infinite recursion
+def random_mosaic(dimension, suitably_connected=True, num_crossings=-1, num_components=-1, _depth=0):
+    """Generates a random mosaic with optional constraints.
+
+    Args:
+        dimension: Size of the mosaic (n x n)
+        suitably_connected: If True, ensures all tiles connect properly
+        num_crossings: Required number of crossings (-1 for any)
+        num_components: Required number of components (-1 for any)
+    """
+    # Prevent infinite recursion
     if _depth > 5000:
         raise ValueError("Could not generate mosaic satisfying constraints after 5000 attempts")
 
@@ -519,65 +548,43 @@ def random_mosaic(dimension, suitably_connected = True, num_crossings = -1, num_
         template = matrix(ZZ, dimension, dimension)
         for i in range(dimension):
             for j in range(dimension):
-                template[i,j] = choice(Mosaic(template).potential_tiles(i,j))
+                template[i, j] = choice(Mosaic(template).potential_tiles(i, j))
         M = Mosaic(template)
     else:
         M = Mosaic(random_matrix(GF(11), dimension, dimension))
-    
+
     # Check constraints (if given)
     crossing_validity = (num_crossings == -1) or (M.numCrossings() == num_crossings)
     component_validity = (num_components == -1) or (M.numComponents() == num_components)
 
     if crossing_validity and component_validity:
         return M
-    else:
-        return random_mosaic(dimension, suitably_connected, num_crossings, num_components, _depth + 1)
+    return random_mosaic(dimension, suitably_connected, num_crossings, num_components, _depth + 1)
 
 
+def tangleConstructor(value, flip=False):
+    """Creates a rational tangle mosaic for the given value.
 
-
-
-
-
-
-
-# This just made life easier.
-def opposite(direction):
-    assert direction in ['up','down','left','right']
-    if direction == 'up':
-        return 'down'
-    if direction == 'down':
-        return 'up'
-    if direction == 'left':
-        return 'right'
-    if direction == 'right':
-        return 'left'
-
-
-
-
-
-
-
-    
-# flip presents it as upside down, neccesary for longer tangles
-def tangleConstructor(value, flip = False): #perhaps just make this a class
+    Args:
+        value: The tangle value (oo for infinity, 0, or any integer)
+        flip: If True, presents the tangle upside down (necessary for longer tangles)
+    """
     if value == oo:
         return Mosaic([[7]])
     if value == 0:
         return Mosaic([[8]])
 
-    def jordan_block_modified(eigenvalue, size, sparse=False, flip = False):
+    def jordan_block_modified(eigenvalue, size, sparse=False, flip=False):
         try:
             size = ZZ(size)
         except TypeError:
-            msg = "size of block needs to be an integer, not {0}"
-            raise TypeError(msg.format(size))
+            raise TypeError(f"size of block needs to be an integer, not {size}")
         if size < 0:
-            msg = "size of block must be nonnegative, not {0}"
-            raise ValueError(msg.format(size))
+            raise ValueError(f"size of block must be nonnegative, not {size}")
+
         block = diagonal_matrix([eigenvalue] * size, sparse=sparse)
-        if flip == True:
+
+        if flip:
             for i in range(size - 1):
                 block[i, i + 1] = 1
             for i in range(size):
@@ -590,200 +597,132 @@ def tangleConstructor(value, flip = False): #perhaps just make this a class
             for i in range(size):
                 if i > 0:
                     block[i, i - 1] = 2
-            return block[::-1,:]
+            return block[::-1, :]
 
     if value > 0:
-        return Mosaic(jordan_block_modified(10, value, flip = flip))
+        return Mosaic(jordan_block_modified(10, value, flip=flip))
     if value < 0:
-        return Mosaic(jordan_block_modified(9, -value, flip = flip))
+        return Mosaic(jordan_block_modified(9, -value, flip=flip))
 
 
-
-
-
-
-
-    
-# Unfinished        
-#def generalizedConnector(dim1, dim2, endpoint1, endpoint2, boundary1, boundary2):
-    # Creates a connecting strand from endpoint1 to endpoint2 contained in a dim1 x dim2 mosaic
-    # Endpoints need to be a tuple on the boundary of the mosaic
-#    assert boundary1 in ['top','bottom','left','right']
-#    assert boundary2 in ['top','bottom','left','right']
-
-#    template = matrix(ZZ,dim1,dim2)
-    
-    # it is irrelevant where you begin
-#    y1,x1 = endpoint1
-#    y2,x2 = endpoint2
-
-#    if y1 == y2:
-#        for x in range(min(x1,x2), max(x1,x2)+1):
-#            template[y1,x] = 5 # horizontal strand
-    
-#    elif y1 < y2:
-#        #the first tile is higher than the second in the mosaic
-#            template[y1,x1] = 1 # down right
-
-
-#    if x1 == x2:
-#        for y in range(min(y1,y2), max(y1,y2)+1):
-#           template[y,x1] = 6 # vertical strand
-
-  
-
-#    return Mosaic(template)
-
-
-
-
-
-
-
-    
-# takes in mosaics, TODO -- NEED TO ALLOW FULL LISTS LATER
 def tangleJoin(tangle_list):
-    #other one is transpose? need to write a mosaic "rotate/flip/refelect" method, maybe not now
-    #issue is upon reflecting, tiles need to be flipped to their correct orientation
-    #for now lets settle with a "flip" optional argument
+    """Joins two tangles together.
 
-    assert len(tangle_list) == 2 # only two tangles can be joined at the moment
+    Note: Currently only supports joining exactly two tangles.
+    """
+    assert len(tangle_list) == 2
 
-
-    def tangleConnector(n,m, direction): # need to generalize for arb. dimension and specificying what connects where
+    def tangleConnector(n, m, direction):
         assert direction in ['bottom-right', 'top-left']
+
         if direction == 'bottom-right':
-            row = [6] + [0 for i in range(m-1)]
-            matrix_data = [row for i in range(n-1)] + [[4] + [0 for i in range(m-1)]]
+            row = [6] + [0 for _ in range(m - 1)]
+            matrix_data = [row for _ in range(n - 1)] + [[4] + [0 for _ in range(m - 1)]]
             return matrix(matrix_data)
         elif direction == 'top-left':
-            row = [0 for i in range(m)]
-            matrix_data = [row for i in range(n-1)] + [[2] + [5 for i in range(m-1)]]
+            row = [0 for _ in range(m)]
+            matrix_data = [row for _ in range(n - 1)] + [[2] + [5 for _ in range(m - 1)]]
             return matrix(matrix_data)
 
-    inner_tangle = tangleConstructor(tangle_list[0])
-     
-    for i in range(len(tangle_list)):
-        block = block_matrix([[tangleConnector(tangleConstructor(tangle_list[1]).size,tangleConstructor(tangle_list[0]).size, 'top-left'),tangleConstructor(tangle_list[1]).matrix()],
-                            [tangleConstructor(tangle_list[0], flip = True).matrix(),tangleConnector(tangleConstructor(tangle_list[0]).size,tangleConstructor(tangle_list[1]).size, 'bottom-right')]])
+    tangle0 = tangleConstructor(tangle_list[0])
+    tangle1 = tangleConstructor(tangle_list[1])
+    tangle0_flipped = tangleConstructor(tangle_list[0], flip=True)
+
+    block = block_matrix([
+        [tangleConnector(tangle1.size, tangle0.size, 'top-left'), tangle1.matrix()],
+        [tangle0_flipped.matrix(), tangleConnector(tangle0.size, tangle1.size, 'bottom-right')]
+    ])
 
     return Mosaic(block)
 
 
 def orientedGaussCode(M):
-    # internal function
-    def pick_starting_tile(M): #ensures starting tile is not crossing/hyperbolic tile
+    """Generates oriented Gauss code for SageMath Link() compatibility.
+
+    Returns the code in the format expected by SageMath's Link class.
+    """
+    def pick_starting_tile(M):
+        """Ensures starting tile is not a crossing/hyperbolic tile."""
         strand_matrix = M.strandMatrix()
         for i in range(M.size):
             for j in range(M.size):
-                if strand_matrix[i,j] == 1:
-                    return (i,j)
+                if strand_matrix[i, j] == 1:
+                    return (i, j)
 
     def crossing_handedness(tile_type, orientation_pair):
-        assert tile_type in [9, 10]
+        """Determines the handedness (+1 or -1) of a crossing."""
+        assert tile_type in CROSSING_TILES
+        sorted_pair = sorted(orientation_pair)
+
         if tile_type == 9:
-            if sorted(orientation_pair) == ["right", "up"]:
+            if sorted_pair in [["right", "up"], ["down", "left"]]:
                 return 1
-            if sorted(orientation_pair) == ["down", "left"]:
-                return 1
-            if sorted(orientation_pair) == ["down", "right"]:
+            if sorted_pair in [["down", "right"], ["left", "up"]]:
                 return -1
-            if sorted(orientation_pair) == ["left", "up"]:
+        elif tile_type == 10:
+            if sorted_pair in [["left", "up"], ["down", "right"]]:
+                return 1
+            if sorted_pair in [["down", "left"], ["right", "up"]]:
                 return -1
 
-        if tile_type == 10:
-            if sorted(orientation_pair) == ["left", "up"]:
-                return 1
-            if sorted(orientation_pair) == ["down", "right"]:
-                return 1
-            if sorted(orientation_pair) == ["down", "left"]:
-                return -1
-            if sorted(orientation_pair) == ["right", "up"]:
-                return -1
+    def over_under(tile_type, orientation, numeric=False):
+        """Determines if the strand goes over or under at a crossing."""
+        assert tile_type in CROSSING_TILES
 
-    def over_under(tile_type, orientation, numeric = False):
-        assert tile_type in [9, 10]
         if tile_type == 9:
-            if orientation in ["up", "down"]: 
-                positioning = "under"
-            if orientation in ["left", "right"]:
-                positioning = "over"
-        if tile_type == 10:
-            if orientation in ["up", "down"]:
-                positioning = "over"
-            if orientation in ["left", "right"]:
-                positioning = "under"
+            positioning = "under" if orientation in ["up", "down"] else "over"
+        elif tile_type == 10:
+            positioning = "over" if orientation in ["up", "down"] else "under"
+
         if numeric:
-            return 1 if positioning == "over" else -1 # 1 for over, -1 for under
-        return positioning # "over" or "under" if numeric = False
+            return 1 if positioning == "over" else -1
+        return positioning
 
-
-    res = []
-
-    path = M.strandOf(pick_starting_tile(M)) 
-    path = list(enumerate(path)) # now path is list of (index, tile)
+    path = M.strandOf(pick_starting_tile(M))
+    path = list(enumerate(path))
 
     crossings = M.findCrossings()
     appearances = []
 
     for c in crossings:
-        appearances += [(M.matrixRepresentation[c],c,index, path[index-1][1]) for index, tile in path if tile == c] # (tile, coord, index, previous coord)
+        for index, tile in path:
+            if tile == c:
+                # (tile_type, coord, index, previous_coord)
+                appearances.append((M.matrixRepresentation[c], c, index, path[index - 1][1]))
 
     appearances.sort()
 
     orientations = []
     for appearance in appearances:
         tile, coord, index, prev_coord = appearance
-        enterance = M.strandOrientationAt(coord, prev_coord)
-        orientations += [(index,tile, coord, enterance, over_under(tile, enterance, numeric = True))] # (index, tile, coord, strand orientation, over/under)
+        entrance = M.strandOrientationAt(coord, prev_coord)
+        # (index, tile, coord, strand orientation, over/under)
+        orientations.append((index, tile, coord, entrance, over_under(tile, entrance, numeric=True)))
 
-    crossings = list(dict.fromkeys([crossing for index, tile, crossing, orientation, positioning in orientations])) # ensures crossings in correct order
+    # Ensure crossings are in correct order
+    crossings = list(dict.fromkeys([crossing for index, tile, crossing, orientation, positioning in orientations]))
 
     crossing_orientations = []
-
     for c in crossings:
         tile_type = M.matrixRepresentation[c]
-        orientation_pair = [enterance for index, tile, crossing, enterance, positioning in orientations if crossing == c]
-        crossing_orientations += [crossing_handedness(tile_type, orientation_pair)]
-
-
-    res += [crossing_orientations] # the second list for the oriented Gauss code!!
-
+        orientation_pair = [entrance for index, tile, crossing, entrance, positioning in orientations if crossing == c]
+        crossing_orientations.append(crossing_handedness(tile_type, orientation_pair))
 
     orientations.sort()
 
-    filter = [(crossings.index(crossing) + 1)*positioning for index, tile, crossing, enterance, positioning in orientations] # can drop index, already ordered in the mode traversed
+    # Generate the filter (already ordered by traversal)
+    code_filter = [
+        (crossings.index(crossing) + 1) * positioning
+        for index, tile, crossing, entrance, positioning in orientations
+    ]
 
-    res += [filter]
-
-    res = [[res[1]],res[0]] # double-list the first list to match Link() format
-
-    return res
-
-
-
-#Were this to be implemented into a GNN...
-
-#Nodes = mosaic tiles (with tile type as features)
-#Edges = connections between adjacent tiles
-#Graph structure captures the topological information
+    # Format for Link() compatibility: [[traversal_code], handedness_list]
+    return [[code_filter], crossing_orientations]
 
 
-
-
-#class mosaics():
-#    def __init__(self):
-        # Refer to graphs Sage package...
-        # https://www.geneseo.edu/knotmosaics/knot-table
-        # https://github.com/andrew-tawfeek/knot-mosaics/blob/master/README.md
-        # https://github.com/amheap/knot-mosaics/blob/master/pythonFiles/draw_knots.py
-
-###############################
-
-        
 # Example code:
 # M = matrix([[0,2,1,0,0],[2,9,10,1,0],[3,10,9,10,1],[0,3,7,8,4],[0,0,3,4,0]]); W = Mosaic(M);
-# W.matrix() 
+# W.matrix()
 # W.show()
 # W.isSuitablyConnected()
 
@@ -795,8 +734,8 @@ def orientedGaussCode(M):
 # hopfBig.strandOf((4,4),'left')
 # These are two different strands (knots) in the hopf! Going left/going right at the crossing determines what was taken.
 
-#hopfBig.shift(3,4, dictionary = True) # Returns directions of tiles *connected too*
+# hopfBig.shift(3,4, dictionary = True) # Returns directions of tiles *connected to*
 
-# W = Mosaic([(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),(0, 0, 0, 0, 2, 5, 5, 1, 0, 0, 0, 0, 0, 0, 0),(0, 0, 0, 0, 6, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0),(0, 0, 0, 0, 6, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0),(0, 2, 5, 5, 9, 5, 5, 10, 5, 5, 1, 0, 0, 0, 0),(0, 6, 0, 0, 6, 0, 0, 6, 0, 0, 6, 0, 0, 0, 0),(0, 6, 0, 0, 6, 0, 0, 3, 1, 0, 6, 0, 0, 0, 0),(0, 3, 5, 5, 10, 5, 1, 0, 3, 5, 10, 5, 5, 1, 0),(0, 0, 0, 0, 6, 0, 3, 1, 0, 0, 6, 0, 0, 6, 0),(0, 0, 0, 0, 6, 0, 0, 6, 0, 2, 4, 0, 0, 6, 0),(0, 0, 0, 0, 3, 5, 5, 10, 5, 4, 0, 2, 5, 4, 0),(0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 2, 4, 0, 0, 0),(0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 6, 0, 0, 0, 0),(0, 0, 0, 0, 0, 0, 0, 3, 5, 5, 4, 0, 0, 0, 0),(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)])
+# W = Mosaic([(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),...])
 # W.strandOf((4,4), direction = 'right').count((4,4)) == 2
-# This indicates the crossing was visited twice in the walk. Orthogonality check is done in the code during second pass-through.
+# This indicates the crossing was visited twice in the walk.

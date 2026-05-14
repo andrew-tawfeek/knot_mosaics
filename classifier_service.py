@@ -65,12 +65,22 @@ def classify_mosaic(mosaic_matrix):
         # Use Jones polynomial to classify
         gauss_code = orientedGaussCode(M)
         is_unknot = jones_unknot(M)
-        
+
+        # Compute Jones polynomial via SageMath Link for storage
+        jones_poly_str = None
+        try:
+            L = Link(gauss_code)
+            jones_poly = L.jones_polynomial()
+            jones_poly_str = str(jones_poly)
+        except Exception as e:
+            print(f"Warning: Could not compute Jones polynomial string: {e}", flush=True)
+
         return {
             "is_unknot": bool(is_unknot),
             "reason": "jones_polynomial",
             "num_crossings": num_crossings,
-            "gauss_code": gauss_code
+            "gauss_code": gauss_code,
+            "jones_polynomial": jones_poly_str
         }
         
     except Exception as e:
